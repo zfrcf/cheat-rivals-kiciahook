@@ -3,51 +3,71 @@
 Application web qui prolonge un morceau uploadé (MP3/MP4) : analyse, transcription,
 génération de paroles, synthèse sur voix clonée, extension instrumentale, montage final.
 
-Ce document est la **proposition d'arborescence et de schéma de base de données**.
-Aucun code applicatif n'est écrit tant qu'elle n'est pas validée.
+**Hébergement retenu : 100 % Vercel** (plan Hobby). Ce choix remplace la file
+BullMQ + Redis du cahier des charges initial, qui exige un processus permanent que
+Vercel ne fournit pas. Tout ce qui suit est adapté à ce contexte.
+
+Aucun code applicatif n'est écrit tant que ce document n'est pas validé.
 
 ---
 
-## 1. Choix techniques (résumé)
+## 1. Contraintes Vercel Hobby et réponses
 
-| Sujet | Choix | Pourquoi |
+| Contrainte | Conséquence | Réponse |
 |---|---|---|
-| Front + API | Next.js 15 (App Router), TypeScript, Tailwind | Imposé |
-| Base de données | PostgreSQL via Prisma | Statuts persistés, JSON natif, migrations propres |
-| File d'attente | BullMQ + Redis | Imposé. Un worker Node **séparé** du serveur Next |
-| Analyse musicale | Script Python `librosa` lancé par le worker (`child_process`) | Pas de service HTTP à maintenir, isolable en conteneur plus tard |
-| Séparation stems | Demucs sur Replicate | Imposé |
-| Transcription | Whisper (API OpenAI) | Imposé |
-| Paroles | Claude API (Anthropic SDK) | Imposé |
-| Voix clonée | Interface `VoiceProvider`, implémentation "non configurée" + adaptateur ElevenLabs en second | À brancher (clé fournie par vous) |
-| Extension instrumentale | Interface `MusicProvider`, implémentation MusicGen (Replicate) en premier | Imposé |
-| Montage | ffmpeg (`fluent-ffmpeg` + binaire système) | Imposé |
-| Stockage fichiers | Disque local `storage/<projetId>/`, purge après 24 h par job répétable BullMQ | Simple, remplaçable par S3 derrière `lib/storage.ts` |
-| Statut temps réel | SSE alimenté par Redis pub/sub | Imposé |
-| Accès projet | Jeton secret par projet (cookie httpOnly), pas de compte utilisateur | Pas d'auth demandée ; empêche qu'un tiers ouvre un projet par son id |
-| Dev local | `docker-compose` : postgres + redis | Démarrage en une commande |
+| Pas de processus permanent | Pas de worker BullMQ | **Inngest** : chaque étape = un `step.run` durable, reprenable, avec retries. État persisté par Inngest **et** en base |
+| Fonctions limitées à 300 s (Fluid Compute) | Une étape longue ne peut pas bloquer | Demucs, MusicGen, voix : appels **asynchrones avec webhook**, la fonction n'attend pas |
+| Corps de requête limité à 4,5 Mo | Impossible d'uploader 100 Mo via l'API | **Vercel Blob, upload direct navigateur → Blob** avec jeton signé côté serveur |
+| Pas de Redis / Postgres intégrés | | **Neon Postgres** (marketplace Vercel) via Prisma. Pas de Redis : Inngest porte la file, la base porte le statut |
+| Pas de Python | Pas de librosa | **essentia.js** (WASM) dans une fonction Node : BPM, tonalité, beats. Structure : algorithme maison (nouveauté sur chroma + énergie) |
+| Pas de ffmpeg système | | **ffmpeg-static** embarqué dans la fonction (≈ 75 Mo, sous la limite de 250 Mo) |
+| Cron Hobby : 1 exécution / jour max | Purge à 24 h imprécise | Purge par **cron Inngest toutes les heures** + refus d'accès dès `expiresAt` dépassé |
+| SSE : connexion coupée à 300 s | | Flux SSE qui lit la base toutes les 2 s, se ferme proprement à 280 s, le client se reconnecte |
+| Whisper : fichier ≤ 25 Mo | Stem vocal WAV 10 min ≈ 100 Mo | Conversion du stem en MP3 64 kbps avant envoi |
 
-Points que je vous demande de trancher, en bas du document (§4).
+Coût services externes hors Vercel : Inngest, Neon et Vercel Blob ont un palier gratuit
+suffisant pour un usage interne. Replicate, OpenAI, Anthropic, ElevenLabs sont facturés à l'usage.
 
 ---
 
-## 2. Arborescence des fichiers
+## 2. Choix techniques (résumé)
+
+| Sujet | Choix |
+|---|---|
+| Front + API | Next.js 15 (App Router), TypeScript, Tailwind, déployé sur Vercel |
+| Orchestration | Inngest (SDK Next.js, route `/api/inngest`) |
+| Base de données | Neon Postgres via Prisma (adaptateur `@prisma/adapter-neon`) |
+| Fichiers | Vercel Blob, préfixe `projets/<id>/`, accès privé via URLs signées côté serveur |
+| Séparation stems | Demucs sur Replicate, webhook |
+| Analyse musicale | essentia.js dans une fonction Node |
+| Transcription | Whisper (API OpenAI) |
+| Paroles | Claude API (Anthropic SDK) |
+| Voix clonée | Interface `VoiceProvider` : `NonConfiguree` + adaptateur ElevenLabs |
+| Extension instrumentale | Interface `MusicProvider` : MusicGen sur Replicate, webhook |
+| Montage | ffmpeg-static : concat, crossfade, `loudnorm` LUFS |
+| Statut temps réel | SSE lisant `PipelineStep` en base |
+| Accès projet | Jeton secret par projet en cookie httpOnly, pas de compte utilisateur |
+| Dev local | `inngest-cli dev` + Neon (branche dev) + Blob (store dev). Pas de Docker nécessaire |
+
+---
+
+## 3. Arborescence des fichiers
 
 ```
 .
-├── ARCHITECTURE.md                 # ce document
-├── README.md                       # installation, variables d'env, lancement
+├── ARCHITECTURE.md
+├── README.md                       # installation, variables d'env, déploiement Vercel
 ├── .env.example                    # toutes les clés, côté serveur uniquement
 ├── .gitignore
-├── docker-compose.yml              # postgres + redis pour le dev
 ├── package.json
 ├── tsconfig.json
-├── next.config.ts
+├── next.config.ts                  # serverExternalPackages: ffmpeg-static, essentia.js
 ├── tailwind.config.ts
 ├── postcss.config.mjs
+├── vercel.json                     # régions, maxDuration par défaut
 │
 ├── prisma/
-│   ├── schema.prisma               # schéma §3
+│   ├── schema.prisma               # schéma §4
 │   └── migrations/
 │
 ├── src/
@@ -63,22 +83,26 @@ Points que je vous demande de trancher, en bas du document (§4).
 │   │   │   ├── generation/page.tsx             # Section, longueur, 2 variantes éditables
 │   │   │   └── rendu/page.tsx                  # Waveform + jointure, A/B, téléchargement
 │   │   └── api/
-│   │       ├── sante/route.ts                              # GET  état DB / Redis / ffmpeg / python
+│   │       ├── inngest/route.ts                            # Point d'entrée Inngest (serve)
+│   │       ├── sante/route.ts                              # GET  DB / Blob / Inngest / ffmpeg
+│   │       ├── upload/route.ts                             # POST jeton d'upload Blob + callback fin d'upload
+│   │       ├── webhooks/replicate/route.ts                 # POST prédiction terminée → événement Inngest
+│   │       ├── webhooks/elevenlabs/route.ts                # POST (si le fournisseur voix est asynchrone)
 │   │       └── projets/
-│   │           ├── route.ts                                # POST upload → projet + 1er job
+│   │           ├── route.ts                                # POST crée le projet après upload Blob
 │   │           └── [id]/
 │   │               ├── route.ts                            # GET état complet · DELETE purge immédiate
 │   │               ├── evenements/route.ts                 # GET  SSE (progression étape par étape)
-│   │               ├── consentement/route.ts               # POST déclaration horodatée → lance stems
+│   │               ├── consentement/route.ts               # POST déclaration horodatée → événement Inngest
 │   │               ├── paroles/route.ts                    # PATCH paroles transcrites corrigées
-│   │               ├── generations/route.ts                # POST  section + longueur → job paroles
+│   │               ├── generations/route.ts                # POST  section + longueur → événement Inngest
 │   │               ├── generations/[genId]/route.ts        # PATCH variante choisie + texte édité
 │   │               ├── generations/[genId]/rendu/route.ts  # POST  lance voix → extension → montage
-│   │               └── fichiers/[type]/route.ts            # GET  flux audio (original, stems, rendu)
+│   │               └── fichiers/[type]/route.ts            # GET  URL signée ou flux (original, stems, rendu)
 │   │
 │   ├── components/
 │   │   ├── ui/                     # Bouton, Carte, Badge, Alerte, BarreProgression
-│   │   ├── depot/                  # ZoneDepot, LecteurApercu
+│   │   ├── depot/                  # ZoneDepot (upload direct Blob), LecteurApercu
 │   │   ├── pipeline/               # FilEtapes, ErreurEtape (quelle API, pourquoi, réessayer)
 │   │   ├── consentement/           # FormulaireConsentement
 │   │   ├── analyse/                # FicheAnalyse, StructureMorceau, EditeurParoles
@@ -86,37 +110,22 @@ Points que je vous demande de trancher, en bas du document (§4).
 │   │   └── rendu/                  # FormeOnde, LecteurAB, BoutonTelechargement
 │   │
 │   ├── hooks/
-│   │   └── useEvenementsProjet.ts  # EventSource + reconnexion
+│   │   └── useEvenementsProjet.ts  # EventSource + reconnexion automatique
 │   │
-│   ├── lib/
-│   │   ├── config.ts               # Lecture/validation des variables d'env (zod)
-│   │   ├── db.ts                   # Client Prisma singleton
-│   │   ├── redis.ts                # Connexions ioredis (queue, pub, sub)
-│   │   ├── queue.ts                # Files BullMQ, noms de jobs, options de retry
-│   │   ├── evenements.ts           # publish/subscribe d'événements projet → SSE
-│   │   ├── stockage.ts             # Chemins, écriture atomique, listing, suppression
-│   │   ├── validation.ts           # Schémas zod : format, taille, durée, sections
-│   │   ├── ffmpeg.ts               # Wrapper : probe, extraction, concat, crossfade, LUFS
-│   │   ├── erreurs.ts              # ErreurPipeline { etape, fournisseur, code, message, cause }
-│   │   └── acces.ts                # Jeton projet (cookie) + vérification
+│   ├── inngest/
+│   │   ├── client.ts               # Client Inngest + schéma typé des événements
+│   │   ├── evenements.ts           # Noms d'événements : projet/cree, projet/consentement.donne,
+│   │   │                           # generation/demandee, generation/rendu.demande, replicate/termine…
+│   │   └── fonctions/
+│   │       ├── preparer-projet.ts          # extraction → attend consentement → stems → analyse → transcription
+│   │       ├── generer-paroles.ts          # Claude, 2 variantes
+│   │       ├── rendre-generation.ts        # voix → extension → montage
+│   │       └── purger-projets.ts           # cron horaire
 │   │
-│   ├── providers/                  # Fournisseurs externes derrière des interfaces
-│   │   ├── types.ts                # StemProvider, AnalysisProvider, TranscriptionProvider,
-│   │   │                           # LyricsProvider, VoiceProvider, MusicProvider
-│   │   ├── index.ts                # Fabrique : choisit l'implémentation selon l'env
-│   │   ├── stems/DemucsReplicate.ts
-│   │   ├── analyse/Librosa.ts      # spawn python/analyse.py, parse JSON
-│   │   ├── transcription/WhisperOpenAI.ts
-│   │   ├── paroles/ClaudeParoles.ts
-│   │   ├── voix/
-│   │   │   ├── NonConfiguree.ts    # Échec explicite "fournisseur voix non configuré"
-│   │   │   └── ElevenLabs.ts       # Adaptateur, activé par VOICE_PROVIDER=elevenlabs
-│   │   └── musique/MusicGenReplicate.ts
-│   │
-│   ├── pipeline/
-│   │   ├── etapes.ts               # Ordre, dépendances, étape → file/job
-│   │   ├── orchestrateur.ts        # Enchaînement, reprise après échec, idempotence
-│   │   └── jobs/                   # Un fichier = un job isolé et reprenable
+│   ├── pipeline/                   # Logique métier de chaque étape, indépendante d'Inngest
+│   │   ├── etapes.ts               # Ordre, dépendances, libellés français
+│   │   ├── statut.ts               # Écriture PipelineStep (RUNNING/SUCCEEDED/FAILED + erreur explicite)
+│   │   └── etapes/
 │   │       ├── extraction-audio.ts
 │   │       ├── separation-stems.ts
 │   │       ├── analyse-musicale.ts
@@ -124,43 +133,68 @@ Points que je vous demande de trancher, en bas du document (§4).
 │   │       ├── generation-paroles.ts
 │   │       ├── synthese-vocale.ts
 │   │       ├── extension-instrumentale.ts
-│   │       ├── montage-final.ts
-│   │       └── purge.ts            # Job répétable : supprime projets expirés (> 24 h)
+│   │       └── montage-final.ts
+│   │
+│   ├── providers/                  # Fournisseurs externes derrière des interfaces
+│   │   ├── types.ts                # StemProvider, AnalysisProvider, TranscriptionProvider,
+│   │   │                           # LyricsProvider, VoiceProvider, MusicProvider
+│   │   ├── index.ts                # Fabrique : choisit l'implémentation selon l'env
+│   │   ├── stems/DemucsReplicate.ts
+│   │   ├── analyse/EssentiaJs.ts
+│   │   ├── transcription/WhisperOpenAI.ts
+│   │   ├── paroles/ClaudeParoles.ts
+│   │   ├── voix/
+│   │   │   ├── NonConfiguree.ts    # Échec explicite "fournisseur voix non configuré"
+│   │   │   └── ElevenLabs.ts       # Clonage instantané depuis le stem vocal + TTS
+│   │   └── musique/MusicGenReplicate.ts
+│   │
+│   ├── lib/
+│   │   ├── config.ts               # Lecture/validation des variables d'env (zod)
+│   │   ├── db.ts                   # Client Prisma + adaptateur Neon
+│   │   ├── blob.ts                 # put/get/del Vercel Blob, URLs signées, listing par projet
+│   │   ├── tmp.ts                  # Téléchargement Blob → /tmp de la fonction, nettoyage
+│   │   ├── ffmpeg.ts               # Wrapper ffmpeg-static : probe, extraction, concat, crossfade, LUFS
+│   │   ├── validation.ts           # Schémas zod : format, taille, durée, sections
+│   │   ├── erreurs.ts              # ErreurPipeline { etape, fournisseur, code, message, cause }
+│   │   └── acces.ts                # Jeton projet (cookie) + vérification + expiration
 │   │
 │   └── types/
-│       └── domaine.ts              # Types partagés front/worker (Analyse, Section, Événement…)
+│       └── domaine.ts              # Types partagés (Analyse, Section, Événement SSE…)
 │
-├── worker/
-│   ├── index.ts                    # Processus BullMQ Worker (npm run worker)
-│   └── python/
-│       ├── requirements.txt        # librosa, numpy, soundfile
-│       └── analyse.py              # BPM, tonalité, beats, structure → JSON sur stdout
-│
-├── storage/                        # Fichiers temporaires (gitignored), purgés à 24 h
 └── tests/
-    ├── unit/                       # validation, ffmpeg (mock), orchestrateur
+    ├── unit/                       # validation, structure musicale, orchestration (Inngest mock)
     └── fixtures/                   # extraits audio courts libres de droits
 ```
 
-### Flux et jobs
+### Flux et fonctions Inngest
 
 ```
-upload ─► EXTRACTION_AUDIO ─► [écran consentement, bloquant] ─► SEPARATION_STEMS
-      ─► ANALYSE_MUSICALE ─► TRANSCRIPTION ─► [écran analyse, paroles éditables]
-      ─► GENERATION_PAROLES (2 variantes) ─► [écran génération, choix + édition]
-      ─► SYNTHESE_VOCALE ─► EXTENSION_INSTRUMENTALE ─► MONTAGE_FINAL ─► [écran rendu]
+upload direct Blob ─► POST /api/projets ─► évt projet/cree
+   └─► preparer-projet :
+         EXTRACTION_AUDIO ─► waitForEvent(consentement, 24 h) ─► SEPARATION_STEMS (Replicate, webhook)
+         ─► ANALYSE_MUSICALE ─► TRANSCRIPTION ─► projet READY_FOR_EDIT
+
+POST /api/projets/[id]/generations ─► évt generation/demandee
+   └─► generer-paroles : GENERATION_PAROLES (2 variantes) ─► LYRICS_READY
+
+POST /api/projets/[id]/generations/[genId]/rendu ─► évt generation/rendu.demande
+   └─► rendre-generation :
+         SYNTHESE_VOCALE ─► EXTENSION_INSTRUMENTALE (Replicate, webhook) ─► MONTAGE_FINAL ─► DONE
 ```
 
-- Chaque job : lit son entrée en base, écrit sa sortie (fichiers + ligne `PipelineStep`),
-  publie un événement SSE. Un job relancé sur une étape déjà `SUCCEEDED` est ignoré.
-- Retry automatique 2 fois avec backoff sur erreurs réseau/fournisseur ; au-delà,
-  `FAILED` avec `provider`, `errorCode`, `errorMessage` visibles dans l'UI, bouton "Réessayer".
-- Le consentement est vérifié **côté serveur** avant tout job qui touche la voix
-  (`SEPARATION_STEMS` inclus, car il produit le stem vocal utilisé pour le clonage).
+- Chaque `step.run` écrit sa ligne `PipelineStep` (RUNNING → SUCCEEDED / FAILED). Inngest
+  rejoue uniquement les steps non terminés : reprise sans refaire le travail déjà fait.
+- Retry automatique 2 fois avec backoff sur erreurs réseau/fournisseur ; au-delà, `FAILED`
+  avec `provider`, `errorCode`, `errorMessage` affichés dans l'UI, bouton « Réessayer »
+  qui réémet l'événement.
+- Fichiers de travail : téléchargés depuis Blob vers `/tmp` de la fonction, résultats
+  renvoyés vers Blob. Rien ne persiste dans la fonction entre deux steps.
+- Le consentement est vérifié **côté serveur** avant tout step qui touche la voix
+  (stems inclus, car le stem vocal sert au clonage).
 
 ---
 
-## 3. Schéma de base de données (Prisma / PostgreSQL)
+## 4. Schéma de base de données (Prisma / Neon Postgres)
 
 ```prisma
 enum ProjectStatus {
@@ -189,6 +223,7 @@ enum StepStatus {
   PENDING
   QUEUED
   RUNNING
+  WAITING_WEBHOOK   // prédiction lancée chez le fournisseur, attente du retour
   SUCCEEDED
   FAILED
   SKIPPED
@@ -198,6 +233,7 @@ enum FileKind {
   ORIGINAL              // fichier uploadé tel quel
   AUDIO_SOURCE          // wav extrait (ou converti) servant à tout le pipeline
   STEM_VOCALS
+  STEM_VOCALS_MP3       // version compressée pour Whisper et le clonage
   STEM_DRUMS
   STEM_BASS
   STEM_OTHER
@@ -233,9 +269,10 @@ model Project {
   originalSizeBytes  Int
   durationSec        Float?        // renseigné après probe ffmpeg
   currentStep        StepName?
+  inngestRunId       String?       // run de preparer-projet, pour lier les logs
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
-  expiresAt          DateTime      // createdAt + 24 h, lu par le job de purge
+  expiresAt          DateTime      // createdAt + 24 h, lu par le cron de purge et par acces.ts
   purgedAt           DateTime?
 
   files         File[]
@@ -251,17 +288,18 @@ model Project {
 }
 
 model File {
-  id          String   @id @default(cuid())
-  projectId   String
-  kind        FileKind
-  path        String   // relatif à STORAGE_ROOT
-  mime        String
-  sizeBytes   Int
-  durationSec Float?
-  sampleRate  Int?
-  channels    Int?
-  generationId String? // renseigné pour VOICE_GENERATED, INSTRUMENTAL_EXTENDED, RENDER_FINAL
-  createdAt   DateTime @default(now())
+  id           String   @id @default(cuid())
+  projectId    String
+  kind         FileKind
+  blobUrl      String   // URL Vercel Blob (accès privé, servie via URL signée)
+  blobPathname String   // "projets/<id>/<kind>.<ext>", clé pour la suppression
+  mime         String
+  sizeBytes    Int
+  durationSec  Float?
+  sampleRate   Int?
+  channels     Int?
+  generationId String?  // renseigné pour VOICE_GENERATED, INSTRUMENTAL_EXTENDED, RENDER_FINAL
+  createdAt    DateTime @default(now())
 
   project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   generation Generation? @relation(fields: [generationId], references: [id], onDelete: Cascade)
@@ -270,7 +308,7 @@ model File {
 }
 
 /// Une ligne par étape et par projet (ou par génération pour les 4 dernières étapes).
-/// C'est la source de vérité de la progression affichée en SSE.
+/// Source de vérité de la progression affichée en SSE.
 model PipelineStep {
   id            String     @id @default(cuid())
   projectId     String
@@ -280,10 +318,11 @@ model PipelineStep {
   attempt       Int        @default(0)
   progress      Int        @default(0)   // 0–100
   provider      String?    // "replicate/demucs", "openai/whisper", "anthropic/claude"…
-  bullJobId     String?
+  inngestRunId  String?
+  externalId    String?    // id de prédiction Replicate en attente de webhook
   startedAt     DateTime?
   finishedAt    DateTime?
-  errorCode     String?    // ex. PROVIDER_TIMEOUT, PROVIDER_QUOTA, INVALID_INPUT, FFMPEG_FAILED
+  errorCode     String?    // PROVIDER_TIMEOUT, PROVIDER_QUOTA, PROVIDER_NOT_CONFIGURED, INVALID_INPUT, FFMPEG_FAILED…
   errorMessage  String?    // phrase lisible en français pour l'UI
   errorDetails  Json?      // payload technique (statut HTTP, id de prédiction…)
   output        Json?      // petites métadonnées de sortie (ids de fichiers, durées)
@@ -295,6 +334,7 @@ model PipelineStep {
 
   @@unique([projectId, generationId, step])
   @@index([projectId, status])
+  @@index([externalId])
 }
 
 model Analysis {
@@ -310,8 +350,8 @@ model Analysis {
   sections        Json     // [{ label, startSec, endSec, bars, energy }]
   beats           Json     // temps (sec) des battements, pour l'alignement au montage
   downbeats       Json     // temps (sec) des premiers temps
-  provider        String   // "librosa"
-  rawOutput       Json?    // sortie complète du script, pour debug
+  provider        String   // "essentia.js"
+  rawOutput       Json?    // sortie complète, pour debug
   createdAt       DateTime @default(now())
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -331,7 +371,7 @@ model Transcription {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
-/// Déclaration de droits. Bloquante : aucun job voix ne démarre sans cette ligne.
+/// Déclaration de droits. Bloquante : aucun step voix ne démarre sans cette ligne.
 /// Le texte exact affiché est stocké avec son hash, pour prouver ce qui a été accepté.
 model Consent {
   id               String   @id @default(cuid())
@@ -361,6 +401,7 @@ model Generation {
   selectedVariantId String?          @unique
   crossfadeMs       Int              @default(800)
   lufsTarget        Float            @default(-14)
+  inngestRunId      String?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
@@ -392,13 +433,13 @@ model LyricsVariant {
 }
 
 /// Journal de chaque appel externe. Sert à afficher "quelle API a échoué et pourquoi",
-/// à reprendre une prédiction Replicate en cours, et à estimer les coûts.
+/// à rattacher un webhook Replicate à son step, et à estimer les coûts.
 model ProviderCall {
   id           String   @id @default(cuid())
   projectId    String
   stepId       String?
   provider     String   // "replicate", "openai", "anthropic", "elevenlabs"
-  operation    String   // "demucs", "whisper", "lyrics", "tts", "musicgen"
+  operation    String   // "demucs", "whisper", "lyrics", "clone", "tts", "musicgen"
   externalId   String?  // id de prédiction / de requête chez le fournisseur
   status       String   // "started" | "succeeded" | "failed"
   httpStatus   Int?
@@ -418,35 +459,54 @@ model ProviderCall {
 ### Purge à 24 h
 
 - `Project.expiresAt` = `createdAt + 24 h`.
-- Job répétable `purge` toutes les 15 min : pour chaque projet expiré non purgé,
-  supprime `storage/<id>/`, supprime les lignes `File`, passe le projet en `EXPIRED`,
-  renseigne `purgedAt`. Les lignes `Consent` et `ProviderCall` sont conservées (trace).
+- Cron Inngest toutes les heures : pour chaque projet expiré non purgé, supprime les blobs
+  `projets/<id>/*`, supprime les lignes `File`, passe le projet en `EXPIRED`, renseigne
+  `purgedAt`. Les lignes `Consent` et `ProviderCall` sont conservées (trace).
+- `acces.ts` refuse tout accès à un projet dont `expiresAt` est dépassé, même avant
+  le passage du cron.
 - `DELETE /api/projets/[id]` fait la même chose immédiatement à la demande de l'utilisateur.
 
 ---
 
-## 4. Points à valider avant d'écrire le code
+## 5. Variables d'environnement (Vercel, côté serveur uniquement)
 
-1. **Python via `child_process`** pour librosa (script lancé par le worker) plutôt qu'un
-   micro-service HTTP. Plus simple à déployer ; à revoir si vous visez un hébergement
-   serverless où le worker ne peut pas embarquer Python.
-2. **Voix clonée** : je livre `NonConfiguree` (erreur explicite) + un adaptateur
-   **ElevenLabs** (clonage instantané à partir du stem vocal). Vous confirmez ce
-   fournisseur, ou vous m'en donnez un autre.
-3. **Pas de compte utilisateur** : accès par jeton secret en cookie. Suffisant pour un
-   usage interne ; à remplacer par une vraie auth si l'outil devient public.
-4. **Section `REFRAIN`** ajoutée aux trois demandées (couplet, pont, outro). À retirer si
-   vous voulez rester strict.
-5. **Limites d'upload proposées** : 100 Mo, 10 min max, formats `mp3`, `mp4`, `m4a`, `wav`.
-6. **Conservation des logs après purge** : `Consent` et `ProviderCall` restent en base
-   après suppression des fichiers. Nécessaire pour la traçabilité, à confirmer côté RGPD.
+```
+DATABASE_URL              Neon (pooled)
+BLOB_READ_WRITE_TOKEN     Vercel Blob
+INNGEST_EVENT_KEY / INNGEST_SIGNING_KEY
+REPLICATE_API_TOKEN       Demucs, MusicGen
+REPLICATE_WEBHOOK_SECRET  vérification de signature des webhooks
+OPENAI_API_KEY            Whisper
+ANTHROPIC_API_KEY         paroles
+VOICE_PROVIDER            none | elevenlabs
+ELEVENLABS_API_KEY
+APP_URL                   pour construire les URLs de webhook
+PROJECT_TOKEN_SECRET      signature des jetons d'accès projet
+```
 
-Dès validation, je livre dans cet ordre :
+---
 
-1. Socle : Next.js, Tailwind, Prisma, docker-compose, config env, page d'accueil vide.
-2. Upload + validation + stockage + extraction ffmpeg + SSE + fil d'étapes.
-3. Consentement bloquant + séparation stems (Demucs).
-4. Analyse librosa + transcription Whisper + écran d'analyse.
+## 6. Points à valider avant d'écrire le code
+
+1. **Inngest** comme orchestrateur à la place de BullMQ + Redis (imposé par le choix 100 % Vercel).
+2. **essentia.js** à la place de librosa. Fiable pour BPM, tonalité et beats. La détection
+   de structure (couplet / refrain / pont) sera moins fine que librosa + modèle dédié :
+   je la livre comme « structure estimée », éditable par l'utilisateur.
+3. **Voix clonée** : `NonConfiguree` + adaptateur **ElevenLabs**. À confirmer ou remplacer.
+4. **Pas de compte utilisateur** : accès par jeton secret en cookie. Suffisant en interne.
+5. **Section `REFRAIN`** ajoutée aux trois demandées (couplet, pont, outro).
+6. **Limites d'upload** : 100 Mo, 10 min max, formats `mp3`, `mp4`, `m4a`, `wav`.
+7. **Conservation des logs après purge** : `Consent` et `ProviderCall` restent en base
+   après suppression des fichiers. À confirmer côté RGPD.
+8. **Plan Vercel Hobby** : usage personnel/non commercial selon les conditions Vercel.
+   Si l'outil sert à l'activité des salles, il faudra passer en plan Pro.
+
+Dès validation, je livre dans cet ordre, avec un déploiement Vercel à chaque étape :
+
+1. Socle : Next.js, Tailwind, Prisma + Neon, Inngest, Blob, config env, page d'accueil.
+2. Upload direct Blob + validation + extraction ffmpeg + SSE + fil d'étapes.
+3. Consentement bloquant + séparation stems (Demucs, webhook).
+4. Analyse essentia.js + transcription Whisper + écran d'analyse.
 5. Génération de paroles (Claude) + écran de génération.
 6. VoiceProvider + MusicProvider (MusicGen) + montage final + écran de rendu.
 7. Purge, gestion d'erreurs consolidée, tests, README.
