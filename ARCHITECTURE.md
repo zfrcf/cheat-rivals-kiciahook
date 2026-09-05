@@ -16,40 +16,68 @@ Aucun code applicatif n'est écrit tant que ce document n'est pas validé.
 | Contrainte | Conséquence | Réponse |
 |---|---|---|
 | Pas de processus permanent | Pas de worker BullMQ | **Inngest** : chaque étape = un `step.run` durable, reprenable, avec retries. État persisté par Inngest **et** en base |
-| Fonctions limitées à 300 s (Fluid Compute) | Une étape longue ne peut pas bloquer | Demucs, MusicGen, voix : appels **asynchrones avec webhook**, la fonction n'attend pas |
+| Fonctions limitées à 300 s (Fluid Compute) | Une étape longue ne peut pas bloquer | Demucs, MusicGen, voix : soumission asynchrone à Hugging Face, résultat relu par des steps courts espacés de 30 s |
 | Corps de requête limité à 4,5 Mo | Impossible d'uploader 100 Mo via l'API | **Vercel Blob, upload direct navigateur → Blob** avec jeton signé côté serveur |
 | Pas de Redis / Postgres intégrés | | **Neon Postgres** (marketplace Vercel) via Prisma. Pas de Redis : Inngest porte la file, la base porte le statut |
 | Pas de Python | Pas de librosa | **essentia.js** (WASM) dans une fonction Node : BPM, tonalité, beats. Structure : algorithme maison (nouveauté sur chroma + énergie) |
 | Pas de ffmpeg système | | **ffmpeg-static** embarqué dans la fonction (≈ 75 Mo, sous la limite de 250 Mo) |
 | Cron Hobby : 1 exécution / jour max | Purge à 24 h imprécise | Purge par **cron Inngest toutes les heures** + refus d'accès dès `expiresAt` dépassé |
 | SSE : connexion coupée à 300 s | | Flux SSE qui lit la base toutes les 2 s, se ferme proprement à 280 s, le client se reconnecte |
-| Whisper : fichier ≤ 25 Mo | Stem vocal WAV 10 min ≈ 100 Mo | Conversion du stem en MP3 64 kbps avant envoi |
+| API d'inférence HF : corps limité | Stem vocal WAV 10 min ≈ 100 Mo | Conversion du stem en MP3 64 kbps et découpage en tronçons de 5 min avant envoi à Whisper |
 
-Coût services externes hors Vercel : Inngest, Neon et Vercel Blob ont un palier gratuit
-suffisant pour un usage interne. Replicate, OpenAI, Anthropic, ElevenLabs sont facturés à l'usage.
+Coût : zéro. Inngest, Neon, Vercel Blob, Hugging Face et Groq ont un palier gratuit
+suffisant pour un usage interne. Aucun fournisseur payant n'est appelé.
 
 ---
 
 ## 2. Choix techniques (résumé)
 
+**Règle : fournisseurs gratuits et open source.** Les modèles sont tous à poids ouverts.
+Le calcul des modèles lourds est délégué à Hugging Face (gratuit, voir §2 bis).
+
 | Sujet | Choix |
 |---|---|
 | Front + API | Next.js 15 (App Router), TypeScript, Tailwind, déployé sur Vercel |
-| Orchestration | Inngest (SDK Next.js, route `/api/inngest`) |
-| Base de données | Neon Postgres via Prisma (adaptateur `@prisma/adapter-neon`) |
-| Fichiers | Vercel Blob, préfixe `projets/<id>/`, accès privé via URLs signées côté serveur |
-| Séparation stems | Demucs sur Replicate, webhook |
-| Analyse musicale | essentia.js dans une fonction Node |
-| Transcription | Whisper (API OpenAI) |
-| Paroles | Claude API (Anthropic SDK) |
-| Voix clonée | Interface `VoiceProvider` : `NonConfiguree` + adaptateur ElevenLabs |
-| Extension instrumentale | Interface `MusicProvider` : MusicGen sur Replicate, webhook |
-| Montage | ffmpeg-static : concat, crossfade, `loudnorm` LUFS |
+| Orchestration | Inngest (open source, auto-hébergeable ; palier gratuit du cloud utilisé) |
+| Base de données | Neon Postgres (Postgres open source, palier gratuit) via Prisma |
+| Fichiers | Vercel Blob (palier gratuit). Alternative open source : Supabase Storage, derrière `lib/blob.ts` |
+| Séparation stems | **Demucs** (Meta, MIT) sur un Space Hugging Face, via l'API Gradio |
+| Analyse musicale | **essentia.js** (AGPL) dans une fonction Node |
+| Transcription | **Whisper** (OpenAI, MIT) via l'API d'inférence Hugging Face |
+| Paroles | **Llama 3.3 70B** ou **Mistral** (poids ouverts) via Groq (API gratuite) ou l'API d'inférence Hugging Face, derrière `LyricsProvider` |
+| Voix clonée | **F5-TTS** (MIT) ou **XTTS-v2** (Coqui) sur un Space Hugging Face, derrière `VoiceProvider` |
+| Extension instrumentale | **MusicGen** (Meta, MIT) via l'API d'inférence Hugging Face ou un Space, derrière `MusicProvider` |
+| Montage | ffmpeg-static (LGPL) : concat, crossfade, `loudnorm` LUFS |
 | Statut temps réel | SSE lisant `PipelineStep` en base |
 | Accès projet | Jeton secret par projet en cookie httpOnly, pas de compte utilisateur |
 | Dev local | `inngest-cli dev` + Neon (branche dev) + Blob (store dev). Pas de Docker nécessaire |
 
----
+### 2 bis. Hugging Face comme moteur de calcul gratuit
+
+Deux mécanismes, tous deux gratuits avec un jeton Hugging Face :
+
+- **API d'inférence** (`api-inference.huggingface.co`) : Whisper, MusicGen-small, LLM.
+  Quota mensuel gratuit limité, latence de démarrage à froid de 20 à 60 s.
+- **Spaces publics** avec API Gradio : Demucs, F5-TTS/XTTS. Soumission par
+  `POST /call/<fonction>` qui renvoie un `event_id`, résultat récupéré ensuite par
+  `GET /call/<fonction>/<event_id>`. Chaque appel tient dans une fonction Vercel ;
+  Inngest relance la lecture du résultat toutes les 30 s jusqu'à la fin.
+
+Ce que ça implique, à accepter en connaissance de cause :
+
+| Sujet | Replicate (payant) | Hugging Face (gratuit) |
+|---|---|---|
+| Demucs, 4 min de musique | ~1 min sur GPU | 5 à 15 min sur CPU partagé, file d'attente possible |
+| MusicGen, 30 s | ~1 min | 3 à 10 min avec `musicgen-small`, qualité inférieure au `large` |
+| Clonage vocal | ElevenLabs, très bonne qualité | F5-TTS correct pour la parole, **le chant reste faible** avec tous les modèles ouverts actuels |
+| Disponibilité | SLA | Un Space public peut dormir, être modifié ou disparaître |
+
+Parade recommandée : **dupliquer les Spaces dans votre compte Hugging Face** (gratuit,
+CPU). Les URLs sont dans les variables d'env, donc rien à changer dans le code.
+Si la lenteur devient bloquante, l'option GPU ZeroGPU exige un compte HF PRO (~9 $/mois),
+sans changement de code non plus.
+
+Le montage final, l'analyse et la transcription ne dépendent pas de GPU et resteront rapides.
 
 ## 3. Arborescence des fichiers
 
@@ -86,8 +114,6 @@ suffisant pour un usage interne. Replicate, OpenAI, Anthropic, ElevenLabs sont f
 │   │       ├── inngest/route.ts                            # Point d'entrée Inngest (serve)
 │   │       ├── sante/route.ts                              # GET  DB / Blob / Inngest / ffmpeg
 │   │       ├── upload/route.ts                             # POST jeton d'upload Blob + callback fin d'upload
-│   │       ├── webhooks/replicate/route.ts                 # POST prédiction terminée → événement Inngest
-│   │       ├── webhooks/elevenlabs/route.ts                # POST (si le fournisseur voix est asynchrone)
 │   │       └── projets/
 │   │           ├── route.ts                                # POST crée le projet après upload Blob
 │   │           └── [id]/
@@ -118,7 +144,7 @@ suffisant pour un usage interne. Replicate, OpenAI, Anthropic, ElevenLabs sont f
 │   │   │                           # generation/demandee, generation/rendu.demande, replicate/termine…
 │   │   └── fonctions/
 │   │       ├── preparer-projet.ts          # extraction → attend consentement → stems → analyse → transcription
-│   │       ├── generer-paroles.ts          # Claude, 2 variantes
+│   │       ├── generer-paroles.ts          # LLM ouvert, 2 variantes
 │   │       ├── rendre-generation.ts        # voix → extension → montage
 │   │       └── purger-projets.ts           # cron horaire
 │   │
@@ -139,14 +165,22 @@ suffisant pour un usage interne. Replicate, OpenAI, Anthropic, ElevenLabs sont f
 │   │   ├── types.ts                # StemProvider, AnalysisProvider, TranscriptionProvider,
 │   │   │                           # LyricsProvider, VoiceProvider, MusicProvider
 │   │   ├── index.ts                # Fabrique : choisit l'implémentation selon l'env
-│   │   ├── stems/DemucsReplicate.ts
+│   │   ├── huggingface/
+│   │   │   ├── inference.ts        # Client API d'inférence HF (jeton, retry, démarrage à froid)
+│   │   │   └── gradio.ts           # Client Spaces : submit → event_id → résultat, upload fichiers
+│   │   ├── stems/DemucsSpace.ts
 │   │   ├── analyse/EssentiaJs.ts
-│   │   ├── transcription/WhisperOpenAI.ts
-│   │   ├── paroles/ClaudeParoles.ts
+│   │   ├── transcription/WhisperHf.ts
+│   │   ├── paroles/
+│   │   │   ├── OpenAiCompatible.ts # Groq, HF router ou tout serveur compatible (Ollama en local)
+│   │   │   └── prompt.ts           # Prompt structuré : métrique, rimes, champ lexical
 │   │   ├── voix/
 │   │   │   ├── NonConfiguree.ts    # Échec explicite "fournisseur voix non configuré"
-│   │   │   └── ElevenLabs.ts       # Clonage instantané depuis le stem vocal + TTS
-│   │   └── musique/MusicGenReplicate.ts
+│   │   │   ├── F5TtsSpace.ts       # Clonage depuis le stem vocal + synthèse
+│   │   │   └── XttsSpace.ts        # Alternative, même interface
+│   │   └── musique/
+│   │       ├── MusicGenHf.ts       # API d'inférence, musicgen-small, continuation audio
+│   │       └── MusicGenSpace.ts    # Space Gradio, pour un modèle plus gros si dupliqué
 │   │
 │   ├── lib/
 │   │   ├── config.ts               # Lecture/validation des variables d'env (zod)
@@ -171,7 +205,7 @@ suffisant pour un usage interne. Replicate, OpenAI, Anthropic, ElevenLabs sont f
 ```
 upload direct Blob ─► POST /api/projets ─► évt projet/cree
    └─► preparer-projet :
-         EXTRACTION_AUDIO ─► waitForEvent(consentement, 24 h) ─► SEPARATION_STEMS (Replicate, webhook)
+         EXTRACTION_AUDIO ─► waitForEvent(consentement, 24 h) ─► SEPARATION_STEMS (Space HF, relances)
          ─► ANALYSE_MUSICALE ─► TRANSCRIPTION ─► projet READY_FOR_EDIT
 
 POST /api/projets/[id]/generations ─► évt generation/demandee
@@ -179,11 +213,12 @@ POST /api/projets/[id]/generations ─► évt generation/demandee
 
 POST /api/projets/[id]/generations/[genId]/rendu ─► évt generation/rendu.demande
    └─► rendre-generation :
-         SYNTHESE_VOCALE ─► EXTENSION_INSTRUMENTALE (Replicate, webhook) ─► MONTAGE_FINAL ─► DONE
+         SYNTHESE_VOCALE (Space HF) ─► EXTENSION_INSTRUMENTALE (HF) ─► MONTAGE_FINAL ─► DONE
 ```
 
 - Chaque `step.run` écrit sa ligne `PipelineStep` (RUNNING → SUCCEEDED / FAILED). Inngest
   rejoue uniquement les steps non terminés : reprise sans refaire le travail déjà fait.
+- Démarrage à froid HF géré : réponse 503 « model loading » = attente puis relance, pas une erreur.
 - Retry automatique 2 fois avec backoff sur erreurs réseau/fournisseur ; au-delà, `FAILED`
   avec `provider`, `errorCode`, `errorMessage` affichés dans l'UI, bouton « Réessayer »
   qui réémet l'événement.
@@ -223,7 +258,7 @@ enum StepStatus {
   PENDING
   QUEUED
   RUNNING
-  WAITING_WEBHOOK   // prédiction lancée chez le fournisseur, attente du retour
+  WAITING_PROVIDER  // travail soumis chez le fournisseur, relecture périodique du résultat
   SUCCEEDED
   FAILED
   SKIPPED
@@ -317,9 +352,9 @@ model PipelineStep {
   status        StepStatus @default(PENDING)
   attempt       Int        @default(0)
   progress      Int        @default(0)   // 0–100
-  provider      String?    // "replicate/demucs", "openai/whisper", "anthropic/claude"…
+  provider      String?    // "hf-space/demucs", "hf-inference/whisper", "groq/llama-3.3-70b"…
   inngestRunId  String?
-  externalId    String?    // id de prédiction Replicate en attente de webhook
+  externalId    String?    // event_id Gradio ou id de requête HF, pour relire le résultat
   startedAt     DateTime?
   finishedAt    DateTime?
   errorCode     String?    // PROVIDER_TIMEOUT, PROVIDER_QUOTA, PROVIDER_NOT_CONFIGURED, INVALID_INPUT, FFMPEG_FAILED…
@@ -365,7 +400,7 @@ model Transcription {
   segments    Json     // [{ startSec, endSec, text }]
   editedText  String?  // corrections de l'utilisateur ; prime sur `text` pour la génération
   editedAt    DateTime?
-  provider    String   // "openai/whisper-1"
+  provider    String   // "hf-inference/openai/whisper-large-v3"
   createdAt   DateTime @default(now())
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -397,7 +432,7 @@ model Generation {
   targetBars        Int?             // déduit du BPM, arrondi à la mesure
   insertAtSec       Float?           // point de jointure (fin du morceau par défaut)
   status            GenerationStatus @default(LYRICS_PENDING)
-  promptContext     Json?            // métrique, rimes, champ lexical fournis à Claude
+  promptContext     Json?            // métrique, rimes, champ lexical fournis au LLM
   selectedVariantId String?          @unique
   crossfadeMs       Int              @default(800)
   lufsTarget        Float            @default(-14)
@@ -418,12 +453,12 @@ model LyricsVariant {
   id            String   @id @default(cuid())
   generationId  String
   index         Int      // 1 ou 2
-  text          String   // proposé par Claude
+  text          String   // proposé par le LLM
   editedText    String?  // version modifiée par l'utilisateur ; prime pour la synthèse
   editedAt      DateTime?
   meter         Json?    // syllabes par ligne
   rhymeScheme   String?  // "AABB", "ABAB"…
-  model         String   // id du modèle Claude utilisé
+  model         String   // id du modèle utilisé (ex. "llama-3.3-70b-versatile")
   createdAt     DateTime @default(now())
 
   generation   Generation  @relation("GenerationVariants", fields: [generationId], references: [id], onDelete: Cascade)
@@ -433,13 +468,13 @@ model LyricsVariant {
 }
 
 /// Journal de chaque appel externe. Sert à afficher "quelle API a échoué et pourquoi",
-/// à rattacher un webhook Replicate à son step, et à estimer les coûts.
+/// à rattacher un résultat Hugging Face à son step, et à suivre les quotas gratuits.
 model ProviderCall {
   id           String   @id @default(cuid())
   projectId    String
   stepId       String?
-  provider     String   // "replicate", "openai", "anthropic", "elevenlabs"
-  operation    String   // "demucs", "whisper", "lyrics", "clone", "tts", "musicgen"
+  provider     String   // "hf-inference", "hf-space", "groq"
+  operation    String   // "demucs", "whisper", "lyrics", "tts", "musicgen"
   externalId   String?  // id de prédiction / de requête chez le fournisseur
   status       String   // "started" | "succeeded" | "failed"
   httpStatus   Int?
@@ -474,13 +509,17 @@ model ProviderCall {
 DATABASE_URL              Neon (pooled)
 BLOB_READ_WRITE_TOKEN     Vercel Blob
 INNGEST_EVENT_KEY / INNGEST_SIGNING_KEY
-REPLICATE_API_TOKEN       Demucs, MusicGen
-REPLICATE_WEBHOOK_SECRET  vérification de signature des webhooks
-OPENAI_API_KEY            Whisper
-ANTHROPIC_API_KEY         paroles
-VOICE_PROVIDER            none | elevenlabs
-ELEVENLABS_API_KEY
-APP_URL                   pour construire les URLs de webhook
+HF_TOKEN                  Hugging Face (inférence + Spaces)
+HF_SPACE_DEMUCS           URL du Space Demucs (public ou dupliqué dans votre compte)
+HF_SPACE_VOICE            URL du Space F5-TTS ou XTTS
+HF_MODEL_WHISPER          défaut : openai/whisper-large-v3
+HF_MODEL_MUSICGEN         défaut : facebook/musicgen-small
+LLM_BASE_URL              défaut : https://api.groq.com/openai/v1 (ou HF router, ou Ollama)
+LLM_API_KEY               clé Groq ou HF
+LLM_MODEL                 défaut : llama-3.3-70b-versatile
+VOICE_PROVIDER            none | f5tts | xtts
+MUSIC_PROVIDER            hf-inference | hf-space
+APP_URL
 PROJECT_TOKEN_SECRET      signature des jetons d'accès projet
 ```
 
@@ -490,23 +529,26 @@ PROJECT_TOKEN_SECRET      signature des jetons d'accès projet
 
 1. **Inngest** comme orchestrateur à la place de BullMQ + Redis (imposé par le choix 100 % Vercel).
 2. **essentia.js** à la place de librosa. Fiable pour BPM, tonalité et beats. La détection
-   de structure (couplet / refrain / pont) sera moins fine que librosa + modèle dédié :
-   je la livre comme « structure estimée », éditable par l'utilisateur.
-3. **Voix clonée** : `NonConfiguree` + adaptateur **ElevenLabs**. À confirmer ou remplacer.
-4. **Pas de compte utilisateur** : accès par jeton secret en cookie. Suffisant en interne.
-5. **Section `REFRAIN`** ajoutée aux trois demandées (couplet, pont, outro).
-6. **Limites d'upload** : 100 Mo, 10 min max, formats `mp3`, `mp4`, `m4a`, `wav`.
-7. **Conservation des logs après purge** : `Consent` et `ProviderCall` restent en base
+   de structure sera livrée comme « structure estimée », éditable par l'utilisateur.
+3. **Hugging Face gratuit** pour Demucs, Whisper, MusicGen et la voix : lent (minutes par
+   étape), qualité `musicgen-small`, chant cloné médiocre avec les modèles ouverts actuels.
+   Vous acceptez ces limites, ou vous prévoyez un compte HF PRO plus tard.
+4. **Paroles par Llama 3.3 70B via Groq** (gratuit, poids ouverts). Interface compatible
+   OpenAI : remplaçable par Ollama en local ou tout autre serveur sans toucher au pipeline.
+5. **Pas de compte utilisateur** : accès par jeton secret en cookie. Suffisant en interne.
+6. **Section `REFRAIN`** ajoutée aux trois demandées (couplet, pont, outro).
+7. **Limites d'upload** : 100 Mo, 10 min max, formats `mp3`, `mp4`, `m4a`, `wav`.
+8. **Conservation des logs après purge** : `Consent` et `ProviderCall` restent en base
    après suppression des fichiers. À confirmer côté RGPD.
-8. **Plan Vercel Hobby** : usage personnel/non commercial selon les conditions Vercel.
+9. **Plan Vercel Hobby** : usage personnel/non commercial selon les conditions Vercel.
    Si l'outil sert à l'activité des salles, il faudra passer en plan Pro.
 
 Dès validation, je livre dans cet ordre, avec un déploiement Vercel à chaque étape :
 
 1. Socle : Next.js, Tailwind, Prisma + Neon, Inngest, Blob, config env, page d'accueil.
 2. Upload direct Blob + validation + extraction ffmpeg + SSE + fil d'étapes.
-3. Consentement bloquant + séparation stems (Demucs, webhook).
+3. Consentement bloquant + séparation stems (Demucs sur Space HF).
 4. Analyse essentia.js + transcription Whisper + écran d'analyse.
-5. Génération de paroles (Claude) + écran de génération.
-6. VoiceProvider + MusicProvider (MusicGen) + montage final + écran de rendu.
+5. Génération de paroles (LLM ouvert) + écran de génération.
+6. VoiceProvider (F5-TTS) + MusicProvider (MusicGen) + montage final + écran de rendu.
 7. Purge, gestion d'erreurs consolidée, tests, README.
