@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AppImage Droid</string>
+    <string name="install">Installer un AppImage</string>
+    <string name="empty">Aucun AppImage installé.\n\nTouchez « Installer un AppImage » ou ouvrez un fichier .AppImage depuis votre gestionnaire de fichiers.</string>
+</resources>
