@@ -63,11 +63,16 @@ class SetupActivity : Activity() {
         text("Ouvrez Termux, collez ces commandes et validez (≈ 5 min) :")
         code(
             "termux-setup-storage\n" +
-                "pkg update -y && pkg install -y x11-repo\n" +
+                "apt update && apt full-upgrade -y -o Dpkg::Options::=\"--force-confnew\"\n" +
+                "pkg install -y x11-repo\n" +
                 "pkg install -y proot-distro squashfs-tools termux-x11-nightly\n" +
-                "mkdir -p ~/.termux && echo 'allow-external-apps=true' >> ~/.termux/termux.properties\n" +
+                "mkdir -p ~/.termux && (grep -q '^allow-external-apps=true' ~/.termux/termux.properties || " +
+                "echo 'allow-external-apps=true' >> ~/.termux/termux.properties)\n" +
                 "termux-reload-settings"
         )
+
+        text("Erreur « CANNOT LINK EXECUTABLE curl » ou miroir introuvable : lancez termux-change-repo " +
+            "(Mirror group → All mirrors) puis relancez le bloc. En dernier recours, réinstallez Termux depuis F-Droid.")
 
         heading("3. Installer Debian et les bibliothèques")
         text("Environnement Linux dans lequel tournent les AppImage (≈ 1 Go) :")
