@@ -1,0 +1,51 @@
+{
+  "titre": "Le papy du bus",
+  "format": "16:9",
+  "style": "plat2d",
+  "langue": "fr",
+  "sous_titres": "bulle",
+  "musique": {"ambiance": "comique", "volume": 0.22},
+  "personnages": {
+    "ines": {"nom": "Inès", "voix": "fr-FR-DeniseNeural", "debit": "+8%", "hauteur": "+2Hz",
+      "look": {"peau": "#e8b48c", "cheveux": "queue", "couleur_cheveux": "#3a2418", "haut": "sweat", "couleur_haut": "#7b4dff", "couleur_bas": "#2c3e70"}},
+    "papy": {"nom": "Papy Jo", "voix": "fr-FR-HenriNeural", "debit": "-4%", "hauteur": "-8Hz",
+      "look": {"peau": "#f2c39b", "cheveux": "chauve", "couleur_cheveux": "#dddddd", "barbe": true, "lunettes": true, "chapeau": "beret", "couleur_chapeau": "#6b4a2f", "haut": "veste", "couleur_haut": "#9a6a3a", "couleur_bas": "#4a4a5a", "age": "vieux"}},
+    "narrateur": {"nom": "Narrateur", "voix": "fr-FR-RemyMultilingualNeural"}
+  },
+  "scenes": [
+    {"decor": "bus", "musique": "comique",
+     "acteurs": [{"id": "ines", "x": 0.42, "tient": "telephone"}, {"id": "papy", "x": 0.6, "tient": "sac"}],
+     "lignes": [
+      {"qui": "ines", "texte": "J'en peux plus, ma salle de sport me harcèle.", "emotion": "blase", "cles": ["harcèle"], "insert": {"type": "notif", "titre": "Ta salle", "texte": "Tu nous manques…"}},
+      {"qui": "papy", "texte": "Ta salle te harcèle ?", "emotion": "surpris"},
+      {"qui": "ines", "texte": "Ça fait trois semaines que j'y suis pas allée.", "emotion": "gene", "cles": ["trois", "semaines"], "insert": {"type": "badge", "texte": "21J"}},
+      {"qui": "papy", "texte": "Et pourquoi donc ?", "geste": "explique"},
+      {"qui": "ines", "texte": "Pas le temps, pas la motivation… et il pleut.", "geste": "haussement", "emotion": "blase", "cles": ["motivation"]},
+      {"qui": "papy", "texte": "Moi, j'y vais tous les matins.", "emotion": "content", "reactions": {"ines": "surpris"}, "cles": ["tous", "matins"]},
+      {"qui": "ines", "texte": "Sérieux ? Mais vous avez quel âge ?", "emotion": "surpris", "symbole": "?"},
+      {"qui": "papy", "texte": "Quatre-vingt-deux ans.", "emotion": "content", "insert": {"type": "badge", "texte": "82"}, "reactions": {"ines": "choque"}}
+     ]},
+    {"decor": {"nom": "salle_sport", "enseigne": "Il y a dix ans"}, "transition": "fondu", "musique": "tendre",
+     "acteurs": [{"id": "papy", "x": 0.5, "tient": "haltere"}],
+     "lignes": [
+      {"qui": "papy", "texte": "Il y a dix ans, mon médecin m'a dit : six mois.", "emotion": "triste", "cles": ["six", "mois"], "camera": "large"},
+      {"qui": "papy", "texte": "Alors j'ai poussé la porte d'une salle.", "emotion": "neutre", "geste": "explique"},
+      {"qui": "papy", "texte": "Et je ne suis jamais reparti.", "emotion": "rire", "geste": "leve_bras", "symbole": "etoiles", "sfx": "tada"}
+     ]},
+    {"decor": "bus", "transition": "fondu", "musique": "tendre",
+     "acteurs": [{"id": "ines", "x": 0.42, "tient": "telephone"}, {"id": "papy", "x": 0.6, "tient": "sac"}],
+     "lignes": [
+      {"qui": "ines", "texte": "Attendez… c'est quoi votre secret ?", "emotion": "surpris"},
+      {"qui": "papy", "texte": "Y aller surtout les jours où t'as pas envie.", "emotion": "content", "cles": ["pas", "envie"], "geste": "pointe", "camera": "gros"},
+      {"qui": "ines", "texte": "…", "emotion": "gene", "symbole": "goutte", "pause": 0.6},
+      {"qui": "ines", "texte": "Je descends au prochain arrêt.", "emotion": "content", "cles": ["prochain", "arrêt"], "bouge": [{"id": "ines", "pose": "debout", "tient": "rien"}], "sfx": "clic"}
+     ]},
+    {"decor": {"nom": "salle_sport", "enseigne": "Le lendemain matin"}, "transition": "glisse", "musique": "comique",
+     "acteurs": [{"id": "ines", "x": 0.3, "entre": "gauche"}, {"id": "papy", "x": 0.68, "tient": "haltere"}],
+     "lignes": [
+      {"qui": "ines", "texte": "Bon. Je suis là.", "emotion": "content", "avant": 1.2, "geste": "mains_hanches"},
+      {"qui": "papy", "texte": "Je t'avais gardé une place !", "emotion": "rire", "geste": "salue", "reactions": {"ines": "rire"}, "symbole": "coeur", "sfx": "ding"},
+      {"qui": "narrateur", "texte": "Merci d'avoir regardé !", "cles": ["Merci"], "camera": "large", "insert": {"type": "titre", "texte": "Le papy du bus\nabonne-toi !", "y": 0.42}}
+     ], "tenue": 1.2}
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "titre": "Le bâillement",
+  "format": "9:16",
+  "style": "cube3d",
+  "langue": "fr",
+  "sous_titres": "mot",
+  "musique": {"ambiance": "comique", "volume": 0.22},
+  "personnages": {
+    "moi": {"nom": "Moi", "voix": "fr-FR-RemyMultilingualNeural", "debit": "+12%",
+      "look": {"peau": "#f5c99b", "cheveux": "epi", "couleur_cheveux": "#c0592b", "lunettes": true, "couleur_lunettes": "#36d6ff", "couleur_haut": "#f1c40f", "couleur_bas": "#27ae60"}},
+    "voisin": {"nom": "Voisin", "voix": "homme", "look": {"peau": "#c68642", "cheveux": "court", "couleur_cheveux": "#222", "chapeau": "casque", "couleur_haut": "#e67e22", "couleur_bas": "#34495e"}},
+    "lea": {"nom": "Léa", "voix": "femme_jeune", "look": {"peau": "#ffdbac", "cheveux": "chignon", "couleur_cheveux": "#7a4a1e", "couleur_haut": "#ecf0f1", "couleur_bas": "#e84393", "age": "enfant"}},
+    "maire": {"nom": "Le maire", "voix": "homme_grave", "look": {"peau": "#f5c99b", "cheveux": "chauve", "chapeau": "haut_de_forme", "couleur_haut": "#2c3e50", "couleur_bas": "#2c3e50", "couleur_dessous": "#c0392b"}}
+  },
+  "scenes": [
+    {"decor": "ville", "acteurs": [{"id": "moi", "x": 0, "z": 2, "anim": "scroll"}, {"id": "voisin", "x": -3, "z": -1, "rot": 30, "anim": "explique"}], "ouverture": "drone",
+     "lignes": [
+      {"qui": "moi", "texte": "Dans ma ville, tout le monde a un talent.", "cles": ["talent"], "camera": "drone"},
+      {"qui": "moi", "texte": "Mon voisin construit une maison par semaine.", "focus": "voisin", "camera": "moyen", "insert": {"type": "compteur", "texte": "1 maison\npar semaine", "y": 0.22}},
+      {"qui": "moi", "texte": "Moi ? Je bâille.", "emotion": "blase", "camera": "gros", "symbole": "zzz", "cles": ["bâille"]}
+     ]},
+    {"decor": "chambre", "acteurs": [{"id": "moi", "x": 0, "z": 0, "anim": "scroll"}],
+     "lignes": [
+      {"qui": "moi", "texte": "Mais attention, pas n'importe quel bâillement.", "camera": "moyen"},
+      {"qui": "moi", "texte": "Quand je bâille, tout le monde bâille.", "emotion": "surpris", "camera": "gros", "cles": ["tout", "monde"], "sfx": "boing"}
+     ]},
+    {"decor": "place_nuit", "foule": 14, "acteurs": [{"id": "moi", "x": -5, "z": 3, "rot": 20, "anim": "scroll"}, {"id": "maire", "x": 2, "z": 1, "rot": -20}], "musique": "fete", "ouverture": "large",
+     "lignes": [
+      {"qui": "moi", "texte": "Samedi soir, grande fête sur la place.", "camera": "orbite", "cles": ["fête"]},
+      {"qui": "moi", "texte": "Sauf que le DJ ne voulait plus s'arrêter.", "camera": "large"},
+      {"qui": "moi", "texte": "Trois jours. Sans dormir.", "insert": {"type": "compteur", "texte": "72 heures", "y": 0.25}, "camera": "plongee", "cles": ["Trois", "jours."]},
+      {"qui": "maire", "texte": "Quelqu'un ! Faites quelque chose !", "emotion": "choque", "camera": "gros", "anim": "bras_leves"}
+     ]},
+    {"decor": {"nom": "place_nuit", "scene_dj": true}, "foule": 14, "foule_anim": "bras_leves", "foule_emotion": "surpris", "acteurs": [{"id": "moi", "x": 0, "z": 3}], "musique": "tension", "transition": "flash",
+     "lignes": [
+      {"qui": "moi", "texte": "Alors j'ai respiré un grand coup…", "camera": "bas"},
+      {"qui": "moi", "texte": "Et j'ai bâillé.", "emotion": "surpris", "camera": "gros", "anim": "bras_leves", "sfx": "whoosh", "cles": ["bâillé."]}
+     ]},
+    {"decor": {"nom": "place_nuit", "eteint": true}, "foule": 14, "foule_anim": "assis", "foule_emotion": "blase", "acteurs": [{"id": "moi", "x": 0, "z": 3, "anim": "joie"}], "musique": "tendre",
+     "lignes": [
+      {"qui": "moi", "texte": "Toute la ville s'est endormie d'un coup.", "camera": "drone", "symbole": "zzz"},
+      {"qui": "moi", "texte": "Même le DJ.", "camera": "large"}
+     ]},
+    {"decor": {"nom": "salle", "enseigne": "Mairie"}, "acteurs": [{"id": "moi", "x": 0, "z": 0, "pose": "assis"}, {"id": "maire", "x": 2.2, "z": 0.5, "rot": -40}], "musique": "comique",
+     "lignes": [
+      {"qui": "maire", "texte": "Le lendemain, le maire m'a donné un travail.", "camera": "trois_quart", "focus": "maire"},
+      {"qui": "moi", "texte": "Bâilleur officiel de la ville.", "emotion": "content", "insert": {"type": "titre", "texte": "Bâilleur\nofficiel", "y": 0.3}, "sfx": "tada", "camera": "moyen"},
+      {"qui": "moi", "texte": "Huit heures par jour. Je bâille sur commande.", "camera": "gros", "emotion": "blase"}
+     ]},
+    {"decor": "pelouse", "acteurs": [{"id": "moi", "x": 0, "z": 0}], "musique": "tendre", "transition": "fondu",
+     "lignes": [
+      {"qui": "moi", "texte": "Hier, c'était mon jour de repos.", "camera": "large"},
+      {"qui": "moi", "texte": "J'ai voulu faire une sieste.", "camera": "moyen", "emotion": "content"},
+      {"qui": "moi", "texte": "Impossible. Je n'avais même pas sommeil.", "camera": "gros", "emotion": "choque", "cles": ["Impossible."], "symbole": "?"}
+     ], "tenue": 0.8}
+  ]
+}

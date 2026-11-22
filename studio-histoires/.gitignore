@@ -1,0 +1,5 @@
+node_modules/
+projets/*
+!projets/.gitkeep
+__pycache__/
+*.pyc

@@ -1,0 +1,8 @@
+{
+  "name": "studio-histoires",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Rendu des vidéos d'histoires animées (Chromium via Playwright)",
+  "scripts": { "postinstall": "playwright install chromium || true" },
+  "dependencies": { "playwright": "1.48.2" }
+}

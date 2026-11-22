@@ -1,0 +1,4 @@
+edge-tts>=7.0
+numpy>=1.26
+anthropic>=0.70     # optionnel : écriture automatique du scénario
+piper-tts>=1.2      # optionnel : voix hors-ligne de secours

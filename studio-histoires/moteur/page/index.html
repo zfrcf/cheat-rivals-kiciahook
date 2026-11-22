@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>Studio Histoires — moteur</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style></head>
+<body><canvas id="out"></canvas>
+<script src="commun.js"></script>
+<script src="plat2d.js"></script>
+<script type="module">
+import './cube3d.js';
+window.MOTEUR_PRET = true;
+</script>
+<script>
+// API pilotée par rendu.js (Playwright) ou par l'aperçu navigateur
+window.initialiser = async (TL) => {
+  while (!window.MOTEUR_PRET) await new Promise(r => setTimeout(r, 20));
+  await S.chargerPolices(); S.preparer(TL);
+  const out = document.getElementById('out'); out.width = TL.W; out.height = TL.H;
+  window.TL = TL; window.MOTEUR = TL.projet.style === 'cube3d' ? Cube3D : Plat2D;
+  MOTEUR.init(TL, out); return true;
+};
+window.images = (debut, n, fps, qualite) => {
+  const out = document.getElementById('out'), res = [];
+  for (let i = 0; i < n; i++) { MOTEUR.frame((debut + i) / fps); res.push(out.toDataURL('image/jpeg', qualite || 0.92).slice(23)); }
+  return res;
+};
+// Aperçu interactif : index.html?timeline=chemin/timeline.json
+(async () => {
+  const q = new URLSearchParams(location.search).get('timeline'); if (!q) return;
+  const TL = await (await fetch(q)).json(); await initialiser(TL);
+  const out = document.getElementById('out'); out.style.width = '100vw'; out.style.height = '100vh'; out.style.objectFit = 'contain';
+  const a = new Audio(q.replace('timeline.json', 'mix.wav')); const t0 = performance.now();
+  a.play().catch(() => {});
+  const boucle = () => { const t = a.currentTime || (performance.now() - t0) / 1000; MOTEUR.frame(t % TL.duree); requestAnimationFrame(boucle); }; boucle();
+})();
+</script></body></html>
