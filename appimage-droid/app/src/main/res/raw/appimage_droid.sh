@@ -2,47 +2,40 @@
 # AppImage Droid — script exécuté dans Termux.
 #   appimage-droid.sh run <fichier.AppImage> <offset> <id> <arch> [arguments…]
 #   appimage-droid.sh remove <id>
+# Tout passe par « proot-distro login » : aucun chemin interne de proot-distro
+# n'est supposé (il a changé entre les versions).
 DISTRO="${APPIMAGE_DROID_DISTRO:-debian}"
-ROOTFS="$PREFIX/var/lib/proot-distro/installed-rootfs/$DISTRO"
 
 say()  { printf '\033[1;36m[AppImage Droid]\033[0m %s\n' "$*"; }
 fail() { printf '\033[1;31m[AppImage Droid] %s\033[0m\n' "$*"; read -rp "Entrée pour fermer… " _; exit 1; }
 
+command -v proot-distro >/dev/null || fail "proot-distro manquant : pkg install proot-distro"
+proot-distro login "$DISTRO" -- true >/dev/null 2>&1 \
+  || fail "Distribution « $DISTRO » introuvable. Suivez « Configuration Termux » dans l'app."
+
 cmd="$1"; shift
 case "$cmd" in
   remove)
-    [ -n "$1" ] && rm -rf "$ROOTFS/opt/appimages/$1"
+    [ -n "$1" ] && proot-distro login "$DISTRO" -- rm -rf "/opt/appimages/$1"
     say "Fichiers extraits supprimés : $1"; exit 0 ;;
   run) ;;
   *) fail "Commande inconnue : $cmd" ;;
 esac
 
 SRC="$1"; OFF="$2"; ID="$3"; ARCH="$4"; shift 4
-
-[ -d "$ROOTFS" ] || fail "Distribution « $DISTRO » absente. Suivez « Configuration Termux » dans l'app."
 [ -r "$SRC" ] || fail "Fichier illisible : $SRC — lancez termux-setup-storage"
 
-DEST="$ROOTFS/opt/appimages/$ID"
-if [ ! -e "$DEST/AppRun" ] || [ "$SRC" -nt "$DEST/.appimage-droid" ]; then
+# Le dossier de l'AppImage est monté dans Debian sous /mnt/appimage-src.
+IN="/mnt/appimage-src/$(basename "$SRC")"
+APPDIR="/opt/appimages/$ID"
+pd() { proot-distro login "$DISTRO" --shared-tmp --bind "$(dirname "$SRC"):/mnt/appimage-src" -- "$@"; }
+
+if ! pd bash -c '[ -e "$1/AppRun" ] && [ ! "$2" -nt "$1/.appimage-droid" ]' _ "$APPDIR" "$IN"; then
   say "Extraction (première exécution ou mise à jour)…"
-  rm -rf "$DEST"; mkdir -p "$ROOTFS/opt/appimages"
-  if command -v unsquashfs >/dev/null; then
-    unsquashfs -q -n -o "$OFF" -d "$DEST" "$SRC" >/dev/null || fail "Échec de l'extraction"
-  else
-    # unsquashfs n'existe pas dans Termux : on l'utilise depuis Debian.
-    proot-distro login "$DISTRO" -- sh -c 'command -v unsquashfs' >/dev/null 2>&1 \
-      || fail "unsquashfs manquant : proot-distro login $DISTRO -- apt install -y squashfs-tools"
-    INSIDE="$SRC"
-    if ! proot-distro login "$DISTRO" -- test -r "$SRC" 2>/dev/null; then
-      INSIDE="/tmp/appimage-droid-$ID.AppImage"
-      cp "$SRC" "$ROOTFS$INSIDE" || fail "Copie impossible vers $DISTRO"
-    fi
-    proot-distro login "$DISTRO" -- unsquashfs -q -n -o "$OFF" -d "/opt/appimages/$ID" "$INSIDE" >/dev/null
-    rc=$?
-    [ "$INSIDE" != "$SRC" ] && rm -f "$ROOTFS$INSIDE"
-    [ $rc -eq 0 ] || fail "Échec de l'extraction"
-  fi
-  touch "$DEST/.appimage-droid"
+  pd bash -c 'command -v unsquashfs' >/dev/null \
+    || fail "unsquashfs manquant : proot-distro login $DISTRO -- apt install -y squashfs-tools"
+  pd bash -c 'rm -rf "$1" && mkdir -p /opt/appimages && unsquashfs -q -n -o "$3" -d "$1" "$2" >/dev/null && touch "$1/.appimage-droid"' \
+    _ "$APPDIR" "$IN" "$OFF" || fail "Échec de l'extraction"
 fi
 
 RUNNER=""
@@ -50,8 +43,8 @@ HOST="$(uname -m)"
 if [ "$ARCH" != "$HOST" ]; then
   case "$ARCH-$HOST" in
     x86_64-aarch64)
-      proot-distro login "$DISTRO" -- sh -c 'command -v box64' >/dev/null 2>&1 \
-        || fail "AppImage x86_64 : installez box64 dans $DISTRO (voir Configuration Termux)."
+      pd bash -c 'command -v box64' >/dev/null \
+        || fail "AppImage x86_64 : installez box64 (proot-distro login $DISTRO -- apt install -y box64)."
       RUNNER="box64" ;;
     *) fail "Architecture $ARCH non exécutable sur cet appareil ($HOST)." ;;
   esac
@@ -69,6 +62,6 @@ else
 fi
 
 say "Lancement de $ID ($ARCH${RUNNER:+ via $RUNNER})…"
-exec proot-distro login "$DISTRO" --shared-tmp -- \
-  env DISPLAY=:0 APPDIR="/opt/appimages/$ID" ARGV0="$ID" \
-  $RUNNER "/opt/appimages/$ID/AppRun" "$@"
+pd env DISPLAY=:0 APPDIR="$APPDIR" ARGV0="$ID" $RUNNER "$APPDIR/AppRun" "$@"
+rc=$?
+[ $rc -eq 0 ] || fail "L'application s'est arrêtée (code $rc). Les messages ci-dessus indiquent la cause."
