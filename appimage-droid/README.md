@@ -19,9 +19,9 @@ L'app fait le pont :
 ## Prérequis (écran « Configuration Termux » dans l'app)
 
 - Termux (F-Droid) + Termux:X11
-- `pkg install proot-distro squashfs-tools termux-x11-nightly`
+- `pkg install proot-distro termux-x11-nightly`
 - `allow-external-apps=true` dans `~/.termux/termux.properties`
-- `proot-distro install debian` + bibliothèques GTK/NSS (+ `box64` pour le x86_64)
+- `proot-distro install debian` + bibliothèques GTK/NSS et `squashfs-tools` (dans Debian) (+ `box64` pour le x86_64)
 
 ## Compiler
 

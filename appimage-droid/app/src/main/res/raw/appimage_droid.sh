@@ -20,14 +20,28 @@ esac
 SRC="$1"; OFF="$2"; ID="$3"; ARCH="$4"; shift 4
 
 [ -d "$ROOTFS" ] || fail "Distribution « $DISTRO » absente. Suivez « Configuration Termux » dans l'app."
-command -v unsquashfs >/dev/null || fail "unsquashfs manquant : pkg install squashfs-tools"
 [ -r "$SRC" ] || fail "Fichier illisible : $SRC — lancez termux-setup-storage"
 
 DEST="$ROOTFS/opt/appimages/$ID"
 if [ ! -e "$DEST/AppRun" ] || [ "$SRC" -nt "$DEST/.appimage-droid" ]; then
   say "Extraction (première exécution ou mise à jour)…"
   rm -rf "$DEST"; mkdir -p "$ROOTFS/opt/appimages"
-  unsquashfs -q -n -o "$OFF" -d "$DEST" "$SRC" >/dev/null || fail "Échec de l'extraction"
+  if command -v unsquashfs >/dev/null; then
+    unsquashfs -q -n -o "$OFF" -d "$DEST" "$SRC" >/dev/null || fail "Échec de l'extraction"
+  else
+    # unsquashfs n'existe pas dans Termux : on l'utilise depuis Debian.
+    proot-distro login "$DISTRO" -- sh -c 'command -v unsquashfs' >/dev/null 2>&1 \
+      || fail "unsquashfs manquant : proot-distro login $DISTRO -- apt install -y squashfs-tools"
+    INSIDE="$SRC"
+    if ! proot-distro login "$DISTRO" -- test -r "$SRC" 2>/dev/null; then
+      INSIDE="/tmp/appimage-droid-$ID.AppImage"
+      cp "$SRC" "$ROOTFS$INSIDE" || fail "Copie impossible vers $DISTRO"
+    fi
+    proot-distro login "$DISTRO" -- unsquashfs -q -n -o "$OFF" -d "/opt/appimages/$ID" "$INSIDE" >/dev/null
+    rc=$?
+    [ "$INSIDE" != "$SRC" ] && rm -f "$ROOTFS$INSIDE"
+    [ $rc -eq 0 ] || fail "Échec de l'extraction"
+  fi
   touch "$DEST/.appimage-droid"
 fi
 

@@ -65,7 +65,7 @@ class SetupActivity : Activity() {
             "termux-setup-storage\n" +
                 "apt update && apt full-upgrade -y -o Dpkg::Options::=\"--force-confnew\"\n" +
                 "pkg install -y x11-repo\n" +
-                "pkg install -y proot-distro squashfs-tools termux-x11-nightly\n" +
+                "pkg install -y proot-distro termux-x11-nightly\n" +
                 "mkdir -p ~/.termux && (grep -q '^allow-external-apps=true' ~/.termux/termux.properties || " +
                 "echo 'allow-external-apps=true' >> ~/.termux/termux.properties)\n" +
                 "termux-reload-settings"
@@ -80,7 +80,7 @@ class SetupActivity : Activity() {
             "proot-distro install debian\n" +
                 "proot-distro login debian -- bash -c \"apt update && apt install -y " +
                 "libgtk-3-0 libnss3 libasound2 libgbm1 libxss1 libxtst6 libsecret-1-0 " +
-                "libnotify4 libdrm2 libglib2.0-0 libfuse2 fonts-dejavu dbus-x11\""
+                "libnotify4 libdrm2 libglib2.0-0 libfuse2 fonts-dejavu dbus-x11 squashfs-tools\""
         )
 
         heading("4. (Optionnel) AppImage x86_64")

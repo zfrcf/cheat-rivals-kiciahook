@@ -12,8 +12,8 @@ android {
         minSdk = 29          // Android 10
         // 29 : garde l'accès « legacy » à /sdcard sur Android 10 (partagé avec Termux).
         targetSdk = 29
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.0.2"
     }
 
     buildTypes {
