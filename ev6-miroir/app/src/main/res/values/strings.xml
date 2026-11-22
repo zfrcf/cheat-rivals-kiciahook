@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">EV6 Miroir</string>
+    <string name="touch_service_label">EV6 Miroir – tactile</string>
+    <string name="touch_service_desc">Permet de piloter le téléphone depuis l\'écran de la voiture (appuis, défilement, retour, accueil). Aucune donnée n\'est lue ni collectée.</string>
+</resources>

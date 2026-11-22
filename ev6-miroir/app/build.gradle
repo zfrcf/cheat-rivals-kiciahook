@@ -1,0 +1,46 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'fr.ev6miroir'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'fr.ev6miroir'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        release {
+            // Clé fournie par variables d'environnement (jamais commitée).
+            def ks = System.getenv('EV6_KEYSTORE')
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv('EV6_KEYSTORE_PASS')
+                keyAlias 'ev6miroir'
+                keyPassword System.getenv('EV6_KEYSTORE_PASS')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (System.getenv('EV6_KEYSTORE')) signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.car.app:app:1.4.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+}
