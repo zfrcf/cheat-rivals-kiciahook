@@ -1,0 +1,62 @@
+{
+  "titre": "Les blagues de papa",
+  "format": "16:9",
+  "style": "plat2d",
+  "langue": "fr",
+  "sous_titres": "bulle",
+  "musique": {"ambiance": "comique", "volume": 0.22},
+  "personnages": {
+    "tom": {"nom": "Tom", "voix": "fr-FR-RemyMultilingualNeural", "debit": "+10%",
+      "look": {"peau": "#f2c39b", "cheveux": "epi", "couleur_cheveux": "#1f2a4d", "haut": "sweat", "couleur_haut": "#e8664a", "couleur_bas": "#2c3e70"}},
+    "papy": {"nom": "Papy", "voix": "fr-FR-HenriNeural", "debit": "-4%", "hauteur": "-8Hz",
+      "look": {"peau": "#f2c39b", "cheveux": "chauve", "couleur_cheveux": "#dddddd", "barbe": true, "lunettes": true, "chapeau": "beret", "couleur_chapeau": "#3d5a80", "haut": "veste", "couleur_haut": "#6b8e5a", "couleur_bas": "#4a4a5a", "age": "vieux"}},
+    "papa": {"nom": "Papa", "voix": "fr-FR-HenriNeural", "debit": "+4%",
+      "look": {"peau": "#e8b48c", "cheveux": "court", "couleur_cheveux": "#5a3a22", "moustache": true, "haut": "chemise", "couleur_haut": "#3b6fe0", "couleur_bas": "#3a3a4a"}},
+    "narrateur": {"nom": "Narrateur", "voix": "fr-FR-RemyMultilingualNeural"}
+  },
+  "scenes": [
+    {"decor": "bus", "musique": "comique",
+     "acteurs": [{"id": "tom", "x": 0.42, "tient": "telephone"}, {"id": "papy", "x": 0.6, "tient": "livre"}],
+     "lignes": [
+      {"qui": "tom", "texte": "Frère, mon père m'envoie encore une blague.", "emotion": "blase", "cles": ["blague."], "insert": {"type": "notif", "titre": "Papa", "texte": "nouveau message"}},
+      {"qui": "papy", "texte": "Une blague ?", "emotion": "surpris"},
+      {"qui": "tom", "texte": "Tous les matins. Depuis trois ans.", "emotion": "gene", "cles": ["trois", "ans."], "insert": {"type": "icones", "liste": ["✉", "✉", "✉", "✉", "✉"], "legendes": ["lun", "mar", "mer", "jeu", "ven"]}},
+      {"qui": "papy", "texte": "Et elle dit quoi, celle d'aujourd'hui ?", "geste": "explique"},
+      {"qui": "tom", "texte": "Pourquoi les plongeurs plongent en arrière ?", "emotion": "blase", "symbole": "?"},
+      {"qui": "papy", "texte": "Pourquoi ?", "emotion": "content"},
+      {"qui": "tom", "texte": "Parce que sinon, ils tombent dans le bateau.", "emotion": "blase", "reactions": {"papy": "rire"}, "sfx": "boing", "cles": ["bateau."]},
+      {"qui": "papy", "texte": "Elle est bonne !", "emotion": "rire", "geste": "leve_bras"},
+      {"qui": "tom", "texte": "Elle est nulle. Et je réponds jamais.", "emotion": "fache", "cles": ["jamais."]}
+     ]},
+    {"decor": "cuisine", "transition": "fondu", "musique": "tendre",
+     "acteurs": [{"id": "papa", "x": 0.45, "tient": "tasse"}],
+     "lignes": [
+      {"qui": "tom", "texte": "Quand j'étais petit, il m'en racontait au petit-déj.", "camera": "large", "cles": ["petit-déj."]},
+      {"qui": "papa", "texte": "Tu sais pourquoi le café ne va jamais à l'école ?", "emotion": "content", "geste": "explique", "camera": "moyen"},
+      {"qui": "tom", "texte": "Et moi, je riais à chaque fois.", "emotion": "content", "symbole_qui": "papa", "symbole": "coeur"}
+     ]},
+    {"decor": "bus", "transition": "fondu", "musique": "tendre",
+     "acteurs": [{"id": "tom", "x": 0.42, "tient": "telephone"}, {"id": "papy", "x": 0.6, "tient": "livre"}],
+     "lignes": [
+      {"qui": "papy", "texte": "Moi aussi, mon fils m'en envoyait.", "emotion": "content", "camera": "gros"},
+      {"qui": "tom", "texte": "Ah ouais ? Il a arrêté ?", "emotion": "surpris"},
+      {"qui": "papy", "texte": "Non. C'est moi qui ai arrêté de répondre.", "emotion": "triste", "cles": ["arrêté", "répondre."], "reactions": {"tom": "choque"}, "camera": "gros"},
+      {"qui": "papy", "texte": "Maintenant, c'est lui qui ne m'écrit plus.", "emotion": "triste", "sfx": "triste"},
+      {"qui": "tom", "texte": "…", "emotion": "gene", "symbole": "goutte", "pause": 0.5},
+      {"qui": "tom", "texte": "Attendez.", "emotion": "surpris", "symbole": "!", "sfx": "clic", "camera": "gros"}
+     ]},
+    {"decor": "cuisine", "transition": "glisse", "musique": "tendre",
+     "acteurs": [{"id": "papa", "x": 0.5, "tient": "telephone"}],
+     "lignes": [
+      {"qui": "papa", "texte": "Un message de Tom ?", "emotion": "surpris", "insert": {"type": "notif", "titre": "Tom", "texte": "nouveau message", "couleur": "#e8664a"}, "camera": "moyen"},
+      {"qui": "tom", "texte": "Parce qu'il est toujours… serré !", "camera": "gros", "reactions": {"papa": "rire"}, "cles": ["serré !"]},
+      {"qui": "papa", "texte": "Elle est nulle !", "emotion": "rire", "geste": "leve_bras", "symbole": "coeur", "sfx": "tada"}
+     ]},
+    {"decor": "bus", "transition": "fondu", "musique": "tendre",
+     "acteurs": [{"id": "tom", "x": 0.42, "tient": "telephone"}, {"id": "papy", "x": 0.6, "tient": "telephone"}],
+     "lignes": [
+      {"qui": "papy", "texte": "Tu sais quoi ? Je vais en envoyer une, moi aussi.", "emotion": "content", "camera": "deux", "reactions": {"tom": "content"}},
+      {"qui": "narrateur", "texte": "Merci d'avoir regardé !", "cles": ["Merci"], "camera": "large", "insert": {"type": "titre", "texte": "Réponds à ton père\nmême quand c'est nul", "y": 0.2}}
+     ], "tenue": 1.5}
+  ]
+}

@@ -21,7 +21,7 @@ npm install                 # installe Playwright + Chromium
 
 ### Avec Claude Code (recommandé)
 Le skill `video-histoire-animee` est fourni dans `.claude/skills/` à la racine du dépôt. Il suffit de demander :
-> « Fais-moi une vidéo animée 9:16 en 3D sur un coach de salle qui a peur des haltères »
+> « Fais-moi une vidéo animée 9:16 en 3D sur un pigeon qui veut devenir maire »
 
 Claude écrit le scénario, vérifie, prend des instantanés, corrige, puis rend la vidéo.
 
@@ -42,15 +42,15 @@ python studio.py interface      # http://127.0.0.1:8765
 Dans l'interface, vous pouvez créer un projet, modifier le scénario, vérifier, lancer les voix, voir les instantanés, faire un aperçu rapide ou la vidéo finale, puis la lire.
 
 ## Exemples fournis
-- `exemples/papy_salle.json` : *Le papy du bus* (2D, 16:9, environ 40 s). Une jeune femme qui n'a plus de motivation pour le sport rencontre un papy de 82 ans.
+- `exemples/blagues_papa.json` : *Les blagues de papa* (2D, 16:9, environ 50 s). Tom trouve nulles les blagues que son père lui envoie chaque matin… jusqu'à ce qu'un papy du bus lui raconte son histoire.
 - `exemples/baillement.json` : *Le bâillement* (3D, 9:16, environ 42 s). Le seul talent du narrateur est de bâiller… jusqu'à ce que la ville en ait besoin.
 
 ```bash
-mkdir -p projets/papy && cp exemples/papy_salle.json projets/papy/projet.json && python studio.py tout projets/papy
+mkdir -p projets/blagues && cp exemples/blagues_papa.json projets/blagues/projet.json && python studio.py tout projets/blagues
 ```
 
 ## Temps de fabrication (mesurés sur un serveur à 4 cœurs sans GPU)
-| | 2D 40 s | 3D 42 s |
+| | 2D 50 s | 3D 42 s |
 |---|---|---|
 | Voix | environ 50 s (puis en cache) | environ 50 s |
 | Rendu | environ 30 s | environ 6 min (bien plus rapide avec un GPU) |
@@ -71,7 +71,7 @@ skill/                 skill Claude (méthode d'écriture + format du projet)
 ## Personnaliser
 - **Votre musique :** mettez un MP3 dans le dossier du projet et ajoutez `"musique_fichier": "ma_musique.mp3"`.
 - **Nouveau décor 2D :** ajoutez une fonction `DECORS.mon_decor = (t, o) => {...}` dans `plat2d.js` et la hauteur du sol dans `solDe()`.
-- **Votre marque :** utilisez `"logo"` dans le look d'un personnage, `enseigne` dans les décors `salle_sport` / `rue`, et un insert `titre` pour la fin.
+- **Habillage :** utilisez `"logo"` dans le look d'un personnage, `enseigne` dans les décors `rue` / `salle_sport`, et un insert `titre` pour la fin.
 
 ## Licences
 - three.js : MIT (`moteur/page/lib/LICENSE-three.txt`)

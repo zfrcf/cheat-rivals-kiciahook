@@ -1,10 +1,10 @@
 # Format de `projet.json`
 
-Exemples complets : `exemples/papy_salle.json` (plat2d 16:9) et `exemples/baillement.json` (cube3d 9:16).
+Exemples complets : `exemples/blagues_papa.json` (plat2d 16:9) et `exemples/baillement.json` (cube3d 9:16).
 
 ```jsonc
 {
-  "titre": "Le papy du bus",
+  "titre": "Les blagues de papa",
   "format": "16:9",              // "16:9" ou "9:16"
   "style": "plat2d",             // "plat2d" (2D vectoriel) ou "cube3d" (3D cubique)
   "langue": "fr",                // "fr" ou "en" (choix des voix par défaut)
@@ -14,8 +14,8 @@ Exemples complets : `exemples/papy_salle.json` (plat2d 16:9) et `exemples/baille
   "rythme": 1.0,                 // multiplie les pauses entre répliques (0.7 = plus nerveux)
   "personnages": {
     "<id>": {
-      "nom": "Inès",
-      "voix": "fr-FR-DeniseNeural",   // nom edge-tts ou alias : homme, homme_jeune, homme_grave, femme, femme_jeune, femme_douce, enfant, papy, narrateur, belge, suisse, quebec
+      "nom": "Tom",
+      "voix": "fr-FR-RemyMultilingualNeural",   // nom edge-tts ou alias : homme, homme_jeune, homme_grave, femme, femme_jeune, femme_douce, enfant, papy, narrateur, belge, suisse, quebec
       "debit": "+8%", "hauteur": "+2Hz",
       "look": { ... }                 // voir plus bas
     },
@@ -24,7 +24,7 @@ Exemples complets : `exemples/papy_salle.json` (plat2d 16:9) et `exemples/baille
   "scenes": [
     {
       "decor": "bus",                       // ou objet {"nom": "rue", "enseigne": "FLEURISTE", "ambiance": "coucher"}
-      "acteurs": [{"id": "ines", "x": 0.42, "tient": "telephone"}],
+      "acteurs": [{"id": "tom", "x": 0.42, "tient": "telephone"}],
       "musique": "tendre",                  // change l'ambiance à partir de cette scène
       "transition": "fondu",                // "coupe" (défaut), "fondu", "flash", "glisse"
       "camera": "auto",                     // plan par défaut de la scène
@@ -32,16 +32,16 @@ Exemples complets : `exemples/papy_salle.json` (plat2d 16:9) et `exemples/baille
       "duree": 4,                           // scène muette (sans lignes) : durée en s
       "lignes": [
         {
-          "qui": "ines",
-          "texte": "J'en peux plus, ma salle de sport me harcèle.",
+          "qui": "tom",
+          "texte": "Frère, mon père m'envoie encore une blague.",
           "emotion": "blase",
-          "cles": ["harcèle"],              // mots surlignés en jaune (ou *mot* dans le texte)
+          "cles": ["blague."],              // mots surlignés en jaune (ou *mot* dans le texte)
           "geste": "pointe",
           "camera": "gros",
-          "insert": {"type": "notif", "titre": "Ta salle", "texte": "Tu nous manques…"},
+          "insert": {"type": "notif", "titre": "Papa", "texte": "nouveau message"},
           "symbole": "?",
           "reactions": {"papy": "surpris"}, // émotion des autres pendant la réplique (persiste)
-          "bouge": [{"id": "ines", "x": 0.7, "pose": "debout", "tient": "rien"}],
+          "bouge": [{"id": "tom", "x": 0.7, "pose": "debout", "tient": "rien"}],
           "sfx": "pop",                     // ou ["pop", {"nom": "ding", "t": 0.5}]
           "pause": 0.3, "avant": 0,         // silence après / avant la réplique
           "volume": 1.0

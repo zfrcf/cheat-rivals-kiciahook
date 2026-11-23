@@ -133,7 +133,7 @@ def cmd_nouveau(a):
     print(f"✍️  Écriture du scénario pour : {a.idee}")
     projet = ecrire_avec_claude(a.idee, a.format, a.style, a.duree)
     if projet is None:
-        modele = "exemples/papy_salle.json" if a.style == "plat2d" else "exemples/baillement.json"
+        modele = "exemples/blagues_papa.json" if a.style == "plat2d" else "exemples/baillement.json"
         projet = json.loads((RACINE / modele).read_text(encoding="utf-8"))
         projet["titre"] = a.idee[:60]; projet["format"] = a.format
         (dossier / "IDEE.txt").write_text(a.idee + "\n", encoding="utf-8")

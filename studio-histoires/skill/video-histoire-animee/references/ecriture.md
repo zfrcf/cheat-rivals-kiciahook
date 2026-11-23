@@ -5,7 +5,7 @@ Règles tirées de l'analyse de deux vidéos de référence (voir `docs/analyse_
 ## Les deux formats qui marchent
 
 ### A. Dialogue émouvant à chute — `plat2d`, 16:9 (≈ 45–60 s)
-- 2 personnages qui ne se connaissent pas (lieu de passage : bus, salle d'attente, banc, salle de sport).
+- 2 personnages qui ne se connaissent pas (lieu de passage : bus, salle d'attente, banc, file d'attente).
 - Le personnage A se plaint de quelque chose (souvent quelqu'un qu'il aime sans le dire).
 - Le personnage B (plus âgé, plus calme) pose des questions courtes, ne juge pas.
 - 1 ou 2 **flashbacks** illustrés (autre décor, narration par la voix du personnage).
