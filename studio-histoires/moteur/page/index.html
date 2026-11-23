@@ -22,6 +22,17 @@ window.images = (debut, n, fps, qualite) => {
   for (let i = 0; i < n; i++) { MOTEUR.frame((debut + i) / fps); res.push(out.toDataURL('image/jpeg', qualite || 0.92).slice(23)); }
   return res;
 };
+// Miniature : image clé + gros titre (sans sous-titres)
+window.miniature = (t, titre) => {
+  const out = document.getElementById('out'), ctx = out.getContext('2d'), W = out.width, H = out.height, U = Math.min(W, H);
+  const st = TL.projet.sous_titres; TL.projet.sous_titres = 'aucun'; MOTEUR.frame(t); TL.projet.sous_titres = st;
+  const g = ctx.createLinearGradient(0, H * 0.45, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(10,8,30,0.75)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  const mots = String(titre).toUpperCase().split(' '); const max = W > H ? 18 : 12; let lignes = [mots.join(' ')];
+  if (lignes[0].length > max) { let best = null; for (let i = 1; i < mots.length; i++) { const a = mots.slice(0, i).join(' '), b = mots.slice(i).join(' '); const c = Math.max(a.length, b.length); if (!best || c < best[0]) best = [c, a, b]; } lignes = [best[1], best[2]]; }
+  const taille = U * (W > H ? 0.13 : 0.11);
+  lignes.forEach((l, i) => { ctx.save(); ctx.translate(W / 2, H * (W > H ? 0.78 : 0.75) + (i - (lignes.length - 1) / 2) * taille * 1.05); ctx.rotate(-0.03); S.texte(ctx, l, 0, 0, taille, i % 2 ? '#fff' : S.JAUNE, { epaisseur: 0.2 }); ctx.restore(); });
+  return out.toDataURL('image/jpeg', 0.92).slice(23);
+};
 // Aperçu interactif : index.html?timeline=chemin/timeline.json
 (async () => {
   const q = new URLSearchParams(location.search).get('timeline'); if (!q) return;

@@ -13,7 +13,15 @@ const args = process.argv.slice(2);
 const build = path.resolve(args[0] || '.');
 const opt = (n, d) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : d; };
 const apercu = args.includes('--apercu');
+const fmt = opt('--format', null);
+const suffixe = fmt && fmt !== '' ? '_' + fmt.replace(':', 'x') : '';
 const TL = JSON.parse(fs.readFileSync(path.join(build, 'timeline.json'), 'utf8'));
+if (fmt) {
+  const vert = fmt === '9:16'; [TL.W, TL.H] = vert ? [1080, 1920] : [1920, 1080];
+  if (TL.projet.format !== fmt) TL.projet.sous_titres = vert ? (TL.projet.sous_titres_vertical || 'mot') : (TL.projet.sous_titres_horizontal || 'bulle');
+  TL.projet.format = fmt;
+}
+TL.rapide = apercu || args.includes('--rapide');
 if (apercu) { TL.W = Math.round(TL.W / 2 / 2) * 2; TL.H = Math.round(TL.H / 2 / 2) * 2; }
 const fps = apercu ? 15 : TL.fps;
 const debut = parseFloat(opt('--de', 0)), fin = Math.min(parseFloat(opt('--a', TL.duree)), TL.duree);
@@ -40,6 +48,14 @@ const ecrire = (ff, buf) => new Promise((r) => (ff.stdin.write(buf) ? r() : ff.s
   await new Promise((r) => serveur.listen(0, '127.0.0.1', r));
   const port = serveur.address().port;
   const navigateur = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
+  const mini = opt('--miniature', null);
+  if (mini) {
+    const page = await navigateur.newPage({ viewport: { width: 800, height: 800 } });
+    await page.goto(`http://127.0.0.1:${port}/index.html`); await page.evaluate((tl) => window.initialiser(tl), TL);
+    const b64 = await page.evaluate(([t, titre]) => window.miniature(t, titre), [parseFloat(mini), opt('--titre', TL.projet.titre || '')]);
+    const f = path.join(build, `miniature${suffixe}.jpg`); fs.writeFileSync(f, Buffer.from(b64, 'base64'));
+    console.log(`🖼️  Miniature : ${f}`); await navigateur.close(); serveur.close(); return;
+  }
   const inst = opt('--instantanes', null);
   if (inst) {
     const page = await navigateur.newPage({ viewport: { width: 800, height: 800 } });
@@ -72,7 +88,7 @@ const ecrire = (ff, buf) => new Promise((r) => (ff.stdin.write(buf) ? r() : ff.s
   const segs = (await Promise.all([...Array(nW).keys()].map(travail))).filter(Boolean);
   await navigateur.close(); serveur.close();
   const liste = path.join(tmp, 'liste.txt'); fs.writeFileSync(liste, segs.map((s) => `file '${s}'`).join('\n'));
-  const sortie = path.join(build, apercu ? 'video_apercu.mp4' : 'video.mp4');
+  const sortie = path.join(build, (apercu ? 'video_apercu' : 'video') + suffixe + '.mp4');
   await new Promise((r, j) => spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', liste, '-c', 'copy', sortie], { stdio: 'inherit' }).on('close', (c) => (c ? j(new Error('concat')) : r())));
   fs.rmSync(tmp, { recursive: true, force: true });
   console.log(`\n✅ Vidéo (sans son) : ${sortie}  — ${((Date.now() - t0) / 1000).toFixed(0)} s`);

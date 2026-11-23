@@ -69,45 +69,89 @@ AMBIANCES = {
 }
 
 
+def reverb(x, duree=1.6, graine=1):
+    """Réverbération par convolution (réponse impulsionnelle de bruit à décroissance exponentielle)."""
+    r = np.random.default_rng(graine); n = int(duree * SR)
+    ir = r.normal(0, 1, n) * np.exp(-np.arange(n) / SR * (6.9 / duree)); ir[: int(0.012 * SR)] *= 0.2
+    ir = np.convolve(ir, np.ones(6) / 6, "same"); ir /= np.sqrt(np.sum(ir ** 2)) + 1e-9
+    L = len(x) + n - 1; N = 1 << (L - 1).bit_length()
+    return np.fft.irfft(np.fft.rfft(x, N) * np.fft.rfft(ir, N), N)[: len(x)]
+
+
+def basse(f, dur, vol=0.25, carre=False):
+    n = int(dur * SR); t = np.arange(n) / SR
+    s = np.sign(np.sin(2 * np.pi * f * t)) * 0.5 if carre else np.sin(2 * np.pi * f * t) + 0.25 * np.sin(4 * np.pi * f * t)
+    if carre:
+        s = np.convolve(s, np.ones(40) / 40, "same")
+    return vol * s * env_adsr(n, 0.01, dur * 0.8, 0.3, 0.05)
+
+
+def lead(f, dur, vol=0.12):
+    n = int(dur * SR); t = np.arange(n) / SR
+    s = 2 * ((f * t + 0.003 * np.sin(2 * np.pi * 5 * t)) % 1) - 1
+    s = np.convolve(s, np.ones(18) / 18, "same")
+    return vol * s * env_adsr(n, 0.01, dur * 0.6, 0.4, 0.06)
+
+
 def musique(ambiance, duree):
+    """Renvoie une piste stéréo (n, 2) : accords, basse, mélodie, percussions, réverbération."""
+    n0 = int(duree * SR)
     if ambiance in (None, "aucune", "silence"):
-        return np.zeros(int(duree * SR))
+        return np.zeros((n0, 2))
     tempo, base, prog, style = AMBIANCES.get(ambiance, AMBIANCES["tendre"])
     beat = 60 / tempo; mesure = 4 * beat
-    n = int((duree + 2) * SR); out = np.zeros(n)
-    add = lambda sig, t0: out.__setitem__(slice(int(t0 * SR), int(t0 * SR) + len(sig)), out[int(t0 * SR):int(t0 * SR) + len(sig)] + sig[: max(0, n - int(t0 * SR))])
+    n = int((duree + 3) * SR); sec = np.zeros(n); mel = np.zeros(n); perc = np.zeros(n)
+    def add(buf, sig, t0):
+        o = int(t0 * SR)
+        if o >= n: return
+        buf[o:o + len(sig)] += sig[: n - o]
+    import zlib; rmel = np.random.default_rng(zlib.crc32(str(ambiance).encode()))
+    gamme = [0, 2, 4, 5, 7, 9, 11] if style != "tension" else [0, 2, 3, 5, 7, 8, 10]
+    motifs = [[int(rmel.integers(0, 7)) for _ in range(8)] for _ in range(2)]
+    rythme_mel = [1, 0, 1, 1, 0, 1, 0, 1] if style in ("pizz", "fete") else [1, 0, 0, 1, 0, 0, 1, 0]
     t, i = 0.0, 0
     while t < duree + 1:
         acc = [base + d for d in prog[i % len(prog)]]
-        if style in ("piano", "tension"):
-            add(nappe([NOTE(x - 12) for x in acc], mesure + 0.4, 0.06 if style == "piano" else 0.09), t)
-            motif = [0, 1, 2, 1, 0, 2, 1, 2] if style == "piano" else [0, 0, 0, 0]
-            for k, idx in enumerate(motif):
-                if style == "tension":
-                    add(pluck(NOTE(acc[0] - 12), beat, 0.18, 0.3), t + k * beat)
-                else:
-                    add(piano(NOTE(acc[idx % len(acc)] + 12), beat * 1.8, 0.13), t + k * beat / 2)
-            add(piano(NOTE(acc[0] - 24), mesure, 0.12), t)
-        elif style == "pizz":
+        motif = motifs[(i // 2) % 2]
+        if i % 8 >= 2:  # la mélodie entre après 2 mesures
             for k in range(8):
-                note = acc[[0, 2, 1, 2, 0, 1, 2, 1][k] % len(acc)] + 12
-                if k in (0, 3, 4, 6):
-                    add(pluck(NOTE(note), beat * 0.6, 0.2, 0.6), t + k * beat / 2)
+                if not rythme_mel[k]: continue
+                deg = motif[k]; note = base + 12 + gamme[deg % 7] + 12 * (deg // 7)
+                if k in (0, 4): note = acc[(k // 4) % len(acc)] + 12
+                d = beat * (0.45 if style in ("pizz", "fete") else 0.9)
+                sig = pluck(NOTE(note + 12), d, 0.12, 0.7) if style == "pizz" else lead(NOTE(note), d, 0.07) if style == "fete" else piano(NOTE(note + 12), d * 2, 0.07)
+                if style != "tension": add(mel, sig, t + k * beat / 2)
+        if style in ("piano", "tension"):
+            add(sec, nappe([NOTE(x - 12) for x in acc], mesure + 0.4, 0.06 if style == "piano" else 0.09), t)
+            if style == "tension":
+                for k in range(8): add(sec, pluck(NOTE(acc[0] - 12), beat * 0.45, 0.16, 0.3), t + k * beat / 2)
+                add(perc, kick(0.25), t); add(perc, kick(0.18), t + 2 * beat)
+                add(sec, nappe([NOTE(acc[2] + 12 + (i % 4))], mesure, 0.03), t)
+            else:
+                for k, idx in enumerate([0, 1, 2, 1, 0, 2, 1, 2]): add(sec, piano(NOTE(acc[idx % len(acc)] + 12), beat * 1.8, 0.11), t + k * beat / 2)
+                add(sec, basse(NOTE(acc[0] - 24), mesure * 0.95, 0.16), t)
+        elif style == "pizz":
+            for k in (0, 3, 4, 6): add(sec, pluck(NOTE(acc[[0, 2, 1, 2, 0, 1, 2, 1][k] % len(acc)] + 12), beat * 0.6, 0.15, 0.6), t + k * beat / 2)
             for k in range(4):
-                add(pluck(NOTE(acc[0] - 12 + (7 if k % 2 else 0)), beat * 0.5, 0.22, 0.4), t + k * beat)
-                add(hat(0.05), t + k * beat + beat / 2)
+                add(sec, basse(NOTE(acc[0] - 24 + (7 if k % 2 else 0)), beat * 0.45, 0.22, carre=True), t + k * beat)
+                add(perc, hat(0.05), t + k * beat + beat / 2)
+                if k in (1, 3): add(perc, clap(0.06), t + k * beat)
         elif style == "fete":
             for k in range(4):
-                add(kick(0.45), t + k * beat); add(hat(0.07), t + k * beat + beat / 2)
-                if k % 2:
-                    add(clap(0.12), t + k * beat)
-                for sub in range(2):
-                    add(pluck(NOTE(acc[0] - 12), beat * 0.4, 0.2, 0.3), t + k * beat + sub * beat / 2)
-            add(nappe([NOTE(x) for x in acc], mesure, 0.07), t)
+                add(perc, kick(0.45), t + k * beat); add(perc, hat(0.07), t + k * beat + beat / 2)
+                if k % 2: add(perc, clap(0.12), t + k * beat)
+                for sub in range(2): add(sec, basse(NOTE(acc[0] - 24), beat * 0.4, 0.2, carre=True), t + k * beat + sub * beat / 2)
+            add(sec, nappe([NOTE(x) for x in acc], mesure, 0.07), t)
         t += mesure; i += 1
-    out = out[: int(duree * SR)]
-    pk = np.max(np.abs(out)) + 1e-6
-    return out / pk * 0.5
+    wet = {"piano": 0.35, "tension": 0.45, "pizz": 0.16, "fete": 0.18}[style]
+    sec, mel, perc = sec[:n0], mel[:n0], perc[:n0]
+    sec, mel, perc = [b * np.minimum(1, np.arange(n0) / (0.02 * SR + 1)) for b in (sec, mel, perc)]
+    dry = sec + mel + perc
+    gauche = dry + wet * reverb(sec + mel, 1.8, 1); droite = dry + wet * reverb(sec + mel, 1.8, 2)
+    # légère largeur stéréo : mélodie un peu à gauche, accords un peu à droite
+    gauche += 0.15 * mel - 0.1 * sec; droite += 0.15 * sec - 0.1 * mel
+    st = np.stack([gauche, droite], 1)
+    return st / (np.max(np.abs(st)) + 1e-6) * 0.5
 
 
 # ----------------- Bruitages -----------------
@@ -174,50 +218,68 @@ def sfx(nom):
     return np.zeros(10)
 
 
+def _ffmpeg_filtre(a, filtre, build, nom):
+    src, dst = build / f"{nom}_in.wav", build / f"{nom}_out.wav"
+    ecrire_wav(src, a)
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-af", filtre, "-ar", str(SR), "-ac", "1", str(dst)], check=True)
+    r = lire_wav(dst); src.unlink(); dst.unlink()
+    out = np.zeros(len(a)); out[: min(len(a), len(r))] = r[: len(a)]
+    return out
+
+
 def mixer(TL, build, musique_perso=None):
     duree = TL["duree"]; n = int(duree * SR) + SR
     voix = np.zeros(n)
     for L in TL["lignes"]:
         a = lire_wav(build / "clips" / L["clip"]) * float(L.get("volume", 1.0)); o = int(L["debut"] * SR)
         voix[o:o + len(a)] += a[: n - o]
-    # musique par plages d'ambiance identique
-    projet = TL["projet"]; amb_def = (projet.get("musique") or {}).get("ambiance", "tendre") if isinstance(projet.get("musique"), dict) else projet.get("musique", "tendre")
-    vol_mus = (projet.get("musique") or {}).get("volume", 0.22) if isinstance(projet.get("musique"), dict) else 0.22
-    mus = np.zeros(n)
+    # traitement voix : coupe-bas, compression douce, présence
+    voix = _ffmpeg_filtre(voix, "highpass=f=85,acompressor=threshold=-20dB:ratio=3:attack=8:release=120:makeup=2,equalizer=f=3200:t=q:w=1.2:g=2.5,equalizer=f=250:t=q:w=1:g=-2", build, "voix")
+    voix += 0.06 * reverb(voix, 0.5, 3)
+    projet = TL["projet"]; mus_cfg = projet.get("musique") if isinstance(projet.get("musique"), dict) else {"ambiance": projet.get("musique", "tendre")}
+    amb_def, vol_mus = mus_cfg.get("ambiance", "tendre"), mus_cfg.get("volume", 0.22)
+    mus = np.zeros((n, 2))
     if musique_perso and Path(musique_perso).exists():
-        tmp = build / "musique_perso.wav"; subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-stream_loop", "-1", "-i", str(musique_perso), "-t", str(duree + 1), "-ac", "1", "-ar", str(SR), str(tmp)], check=True)
-        m = lire_wav(tmp); mus[: len(m)] = m[:n] * 0.6
+        tmp = build / "musique_perso.wav"; subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-stream_loop", "-1", "-i", str(musique_perso), "-t", str(duree + 1), "-ac", "2", "-ar", str(SR), str(tmp)], check=True)
+        import wave as _w
+        with _w.open(str(tmp)) as w: m = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32).reshape(-1, 2) / 32768
+        mus[: len(m)] = m[:n] * 0.6
     else:
         plages = []
         for sc in TL["scenes"]:
             amb = sc.get("musique") or amb_def
-            if plages and plages[-1][0] == amb:
-                plages[-1][2] = sc["fin"]
-            else:
-                plages.append([amb, sc["debut"], sc["fin"]])
+            if plages and plages[-1][0] == amb: plages[-1][2] = sc["fin"]
+            else: plages.append([amb, sc["debut"], sc["fin"]])
         for amb, d, f in plages:
             m = musique(amb, f - d + 0.5); o = int(d * SR)
-            fondu = int(0.3 * SR); m[:fondu] *= np.linspace(0, 1, fondu); m[-fondu:] *= np.linspace(1, 0, fondu)
+            fondu = int(0.35 * SR); m[:fondu] *= np.linspace(0, 1, fondu)[:, None]; m[-fondu:] *= np.linspace(1, 0, fondu)[:, None]
             mus[o:o + len(m)] += m[: n - o]
-    # ducking : la musique baisse quand quelqu'un parle
-    env = np.abs(voix); k = int(0.25 * SR); env = np.convolve(env, np.ones(k) / k, "same")
-    duck = 1 - 0.6 * np.clip(env / (np.percentile(env[env > 0], 60) + 1e-6 if np.any(env > 0) else 1), 0, 1)
-    mus *= duck * vol_mus / 0.22 * 0.55
-    fx = np.zeros(n)
-    for s in TL["sfx"]:
-        a = sfx(s["nom"]) * 0.8; o = int(s["t"] * SR)
+    # ducking : la musique baisse quand quelqu'un parle (attaque rapide, relâche lente)
+    env = np.abs(voix); k = int(0.2 * SR); env = np.convolve(env, np.ones(k) / k, "same")
+    ref = np.percentile(env[env > 1e-4], 60) if np.any(env > 1e-4) else 1
+    duck = 1 - 0.65 * np.clip(env / (ref + 1e-6), 0, 1)
+    duck = np.convolve(duck, np.ones(int(0.15 * SR)) / int(0.15 * SR), "same")
+    mus *= (duck * vol_mus / 0.22 * 0.6)[:, None]
+    fx = np.zeros((n, 2)); rfx = np.random.default_rng(5)
+    for s_ in TL["sfx"]:
+        a = sfx(s_["nom"]) * 0.75; o = int(s_["t"] * SR); pan = rfx.uniform(-0.35, 0.35)
         if o < n:
-            fx[o:o + len(a)] += a[: n - o]
-    mix = voix + mus + fx * 0.7
-    fin = int(0.6 * SR); mix[-fin:] *= np.linspace(1, 0, fin)
-    mix = mix / (np.max(np.abs(mix)) + 1e-6) * 0.89
-    ecrire_wav(build / "mix.wav", mix[: int(duree * SR)])
+            seg = a[: n - o]; fx[o:o + len(seg), 0] += seg * (1 - pan); fx[o:o + len(seg), 1] += seg * (1 + pan)
+    mix = voix[:, None] + mus + fx * 0.7
+    fin = int(0.6 * SR); mix[-fin:] *= np.linspace(1, 0, fin)[:, None]
+    mix = np.tanh(mix / (np.max(np.abs(mix)) + 1e-6) * 1.1) * 0.89  # limiteur doux
+    ecrire_wav(build / "mix.wav", mix[: int(duree * SR)].reshape(-1), stereo=True)
     return build / "mix.wav"
 
 
-def assembler(build, sortie):
-    """Vidéo + mix → MP4 final normalisé à -14 LUFS (standard réseaux sociaux)."""
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(build / "video.mp4"), "-i", str(build / "mix.wav"),
-                    "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-af", "loudnorm=I=-14:TP=-1.5:LRA=11", "-ar", "48000",
+def assembler(build, sortie, video="video.mp4"):
+    """Vidéo + mix → MP4 final, normalisation EBU R128 en deux passes (−14 LUFS, −1,5 dBTP)."""
+    import json as _j, re as _re
+    r = subprocess.run(["ffmpeg", "-hide_banner", "-i", str(build / "mix.wav"), "-af", "loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json", "-f", "null", "-"], capture_output=True, text=True)
+    m = _j.loads(_re.search(r"\{[^{}]*\}", r.stderr[r.stderr.rfind("[Parsed_loudnorm"):], _re.S).group(0))
+    filtre = (f"loudnorm=I=-14:TP=-1.5:LRA=11:measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}"
+              f":measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true")
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(build / video), "-i", str(build / "mix.wav"),
+                    "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-af", filtre, "-ar", "48000",
                     "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", "-shortest", str(sortie)], check=True)
     return sortie

@@ -94,6 +94,22 @@ const DECORS = {
     ajout(boite(4, 0.1, 0.8, '#666'), -4.5, 0.65, -4.8);
     for (const x of [3, 5.5]) { ajout(boite(1.2, 0.35, 2.6, '#222'), x, 0.18, -3.5); ajout(boite(1.2, 1.3, 0.15, '#444'), x, 1, -4.7); }
   },
+  plage(o) {
+    ciel(o.coucher ? '#ffb070' : '#8fd3ff'); lumieres(false);
+    sol(texCanvas(64, 64, (g) => { g.fillStyle = '#f3d9a4'; g.fillRect(0, 0, 64, 64); for (let i = 0; i < 80; i++) { g.fillStyle = i % 2 ? '#e8c88a' : '#fbe7bd'; g.fillRect((i * 29) % 64, (i * 41) % 64, 2, 2); } }, [40, 40]));
+    const mer = new THREE.Mesh(new THREE.PlaneGeometry(200, 80), new THREE.MeshStandardMaterial({ color: 0x2f9fd8, roughness: 0.3, metalness: 0.1 })); mer.rotation.x = -Math.PI / 2; mer.position.set(0, 0.05, -45); scene.add(mer);
+    animables.push((t) => { mer.position.y = 0.05 + Math.sin(t * 1.5) * 0.05; });
+    for (const [x, z, c] of [[-4, -2, '#e74c3c'], [5, -3, '#f1c40f']]) { ajout(boite(0.15, 2.6, 0.15, '#eee'), x, 1.3, z); const p = new THREE.Mesh(new THREE.ConeGeometry(1.6, 0.7, 8), mat(c)); ajout(p, x, 2.7, z); p.castShadow = true; ajout(boite(1, 0.1, 2, '#3ec1f3'), x + 1.2, 0.05, z + 0.5); }
+    for (let i = 0; i < 6; i++) { const x = -14 + i * 6; ajout(boite(0.4, 4, 0.4, '#8a5a3c'), x, 2, -8); for (let k = 0; k < 4; k++) { const f = boite(2.2, 0.15, 0.6, '#2ecc71'); f.rotation.y = k * Math.PI / 2; f.rotation.z = -0.3; ajout(f, x + Math.cos(k * Math.PI / 2) * 0.9, 4, -8 - Math.sin(k * Math.PI / 2) * 0.9); } }
+  },
+  classe(o) {
+    ciel('#f5e6c8'); lumieres(false); sol(texParquet(), 20);
+    mur(16, 6, '#f5e6c8', 0, 3, -5); mur(16, 6, '#e8d5b0', -7, 3, 0, Math.PI / 2);
+    const tx = texCanvas(256, 128, (g) => { g.fillStyle = '#2f5d4a'; g.fillRect(0, 0, 256, 128); g.fillStyle = '#fff'; g.font = 'bold 34px sans-serif'; g.fillText(o.tableau || '2 + 2 = 4', 20, 75); });
+    ajout(boite(7, 3, 0.1, new THREE.MeshStandardMaterial({ map: tx })), 0, 3.2, -4.85);
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) { const x = -4.5 + c * 3, z = -1 + r * 2.6; ajout(boite(1.6, 0.12, 1, '#c98b52'), x, 1.1, z); ajout(boite(0.12, 1.1, 0.12, '#555'), x, 0.55, z); ajout(boite(0.8, 0.1, 0.8, '#3498db'), x, 0.7, z + 0.9); }
+    ajout(boite(2.4, 1.2, 1.2, '#8a5a3c'), 4.5, 0.6, -3.5);
+  },
   couleur(o) { ciel(o.couleur || '#7b4dff'); lumieres(false); const m = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), mat(o.couleur || '#7b4dff')); m.rotation.x = -Math.PI / 2; m.receiveShadow = true; scene.add(m); },
 };
 
@@ -113,7 +129,7 @@ function dessinerVisage(g, look, st) {
   }
   const o = st.bouche || 0;
   g.fillStyle = '#5a1f1f';
-  if (o > 0.08) { g.beginPath(); g.ellipse(64, 96, 14 + o * 6, 4 + o * 14, 0, 0, 7); g.fill(); g.fillStyle = '#ff7a8a'; g.fillRect(56, 98 + o * 6, 16, 4); }
+  if (o > 0.08 && st.viseme === 'M') g.fillRect(50, 95, 28, 5); else if (o > 0.08) { const fw = { O: 0.6, E: 1.35 }[st.viseme] || 1, fh = { O: 1, E: 0.55 }[st.viseme] || 1; g.beginPath(); g.ellipse(64, 96, (14 + o * 6) * fw, (4 + o * 14) * fh, 0, 0, 7); g.fill(); g.fillStyle = '#ff7a8a'; g.fillRect(56, 98 + o * 6 * fh, 16, 4); }
   else if (em === 'triste') { g.lineWidth = 5; g.strokeStyle = '#5a1f1f'; g.beginPath(); g.arc(64, 108, 14, 1.15 * Math.PI, 1.85 * Math.PI); g.stroke(); }
   else if (em === 'surpris' || em === 'choque') { g.beginPath(); g.ellipse(64, 98, 8, 11, 0, 0, 7); g.fill(); }
   else if (em === 'fache' || em === 'blase') g.fillRect(50, 96, 28, 5);
@@ -165,7 +181,7 @@ function poserActeur(A, st, t) {
   A.brasG.rotation.set(bg, 0, bgz); A.brasD.rotation.set(bd, 0, bdz); g.position.y = y;
   A.tete.rotation.set(st.parle ? Math.sin(t * 9) * 0.05 : 0, Math.sin(t * 0.7 + A.k) * 0.08, st.parle ? Math.sin(t * 4) * 0.04 : 0);
   if (A.tel.visible) { A.g.updateMatrixWorld(true); const p = new THREE.Vector3(0.15, -0.9, 0.12); A.brasD.localToWorld(p); A.tel.position.copy(p); A.tel.rotation.set(-0.5, st.rot, 0); A.ecran.material.color.setHSL(((t * 1.7) | 0) * 0.13 % 1, 0.7, 0.6); }
-  const cle = [st.emotion, st.cligne, Math.round((st.bouche || 0) * 6), st.regard, (st.emotion === 'triste' ? (t * 10) | 0 : 0)].join('|');
+  const cle = [st.emotion, st.cligne, Math.round((st.bouche || 0) * 6), st.viseme, st.regard, (st.emotion === 'triste' ? (t * 10) | 0 : 0)].join('|');
   if (cle !== A.cle) { A.cle = cle; dessinerVisage(A.ctx, A.look, { ...st, t }); A.tex.needsUpdate = true; }
 }
 
@@ -186,7 +202,7 @@ function etat(si, t) {
     const st = { x: a.x ?? (i - ((def.acteurs.length - 1) / 2)) * 1.8, z: a.z ?? 0, rot: (a.rot ?? 0) * Math.PI / 180, pose: a.pose || 'debout', anim: a.anim || null, tient: a.tient, emotion: a.emotion || 'neutre', regard: 0, marche: false };
     for (const l of lignes) { if (l.debut > t) break; for (const b of l.bouge || []) if (b.id === a.id) { const d = b.duree || Math.max(0.6, l.fin - l.debut); const p = clamp((t - l.debut) / d, 0, 1); if (b.x != null) st.x = lerp(st.x, b.x, ease(p)); if (b.z != null) st.z = lerp(st.z, b.z, ease(p)); if (p < 1 && (b.x != null || b.z != null)) st.marche = true; if (b.anim !== undefined) st.anim = b.anim; if (b.rot != null) st.rot = b.rot * Math.PI / 180; if (b.pose) st.pose = b.pose; if (b.tient !== undefined) st.tient = b.tient; }
       if (l.qui === a.id && l.emotion) st.emotion = l.emotion; if (l.reactions && l.reactions[a.id]) st.emotion = l.reactions[a.id]; if (l.anims && l.anims[a.id] !== undefined) st.anim = l.anims[a.id]; }
-    if (L && L.scene === si) { if (L.qui === a.id || (L.qui === 'narrateur' && i === 0 && def.narrateur_visible !== false)) { st.parle = true; st.bouche = S.env(L, t, FPS); if (L.emotion) st.emotion = L.emotion; if (L.anim) st.anim = L.anim; } }
+    if (L && L.scene === si) { if (L.qui === a.id || (L.qui === 'narrateur' && i === 0 && def.narrateur_visible !== false)) { st.parle = true; st.bouche = S.env(L, t, FPS); st.viseme = S.viseme(L, t); if (L.emotion) st.emotion = L.emotion; if (L.anim) st.anim = L.anim; } }
     st.cligne = ((t + hash(a.id) * 4) % 3.3) < 0.12;
     res[a.id] = st;
   });
@@ -226,8 +242,8 @@ function cadrer(si, t, etats) {
 window.Cube3D = {
   init(timeline) {
     TL = timeline; W = TL.W; H = TL.H; FPS = TL.fps;
-    renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-    renderer.setSize(W, H, false); renderer.setPixelRatio(1); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer = new THREE.WebGLRenderer({ antialias: !timeline.rapide, preserveDrawingBuffer: true });
+    renderer.setSize(W, H, false); renderer.setPixelRatio(1); renderer.shadowMap.enabled = !TL.rapide; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; renderer.outputColorSpace = THREE.SRGBColorSpace;
     camera = new THREE.PerspectiveCamera(W < H ? 62 : 45, W / H, 0.1, 200);
     out = document.getElementById('out'); octx = out.getContext('2d');

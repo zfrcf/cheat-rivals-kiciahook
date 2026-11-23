@@ -34,24 +34,30 @@ Puis écris le `projet.json` selon `references/format_projet.md`. Points non né
 
 Crée le dossier `studio-histoires/projets/<nom_court>/projet.json`.
 
-## 3. Vérifier puis fabriquer
+## 3. Contrôler AVANT de rendre (boucle courte)
 ```bash
 cd studio-histoires
-python studio.py verifier projets/<nom>      # corrige toutes les erreurs ❌ avant de continuer
-python studio.py voix     projets/<nom>      # voix + timeline (rapide, mis en cache)
-node moteur/rendu.js projets/<nom>/build --instantanes auto   # 1 image par réplique
+python studio.py verifier projets/<nom>      # erreurs ❌ bloquantes
+python studio.py controle projets/<nom>      # note /100 + recommandations + build/planche_instantanes.jpg
 ```
-**Regarde** les instantanés (`projets/<nom>/build/instantanes/*.jpg`, ou monte une planche avec ffmpeg `tile`) et corrige : personnage caché, plan mal cadré, sous-titre qui chevauche un insert, émotion qui ne colle pas. Itère sur le JSON (rapide) avant le rendu complet.
+- **Lis** `build/rapport.md` et **regarde** `build/planche_instantanes.jpg` (1 image par réplique) : personnage caché, plan mal cadré, sous-titre sur un insert, émotion à contre-sens.
+- Corrige le JSON et relance `controle` jusqu'à **≥ 85/100** et zéro défaut visuel. Ne lance pas le rendu complet avant.
+- Relis aussi le texte à voix haute mentalement : chaque réplique doit pouvoir être dite d'un souffle.
 
-Ensuite :
+## 4. Fabriquer
 ```bash
-python studio.py tout projets/<nom>          # rendu complet + musique + mixage + MP4 final + planche
-# variante rapide : --apercu (demi-résolution, 15 i/s)
+python studio.py tout projets/<nom> --formats 16:9,9:16   # vidéo(s) + .srt + miniature(s) + planche
+# itération rapide : --apercu  (demi-résolution) ; 3D : --rapide (sans ombres, 2-3x plus vite)
 ```
-Le MP4 final est dans `projets/<nom>/<titre>.mp4`, normalisé à −14 LUFS (standard réseaux sociaux), et `build/planche.jpg` résume la vidéo en 24 images : **vérifie-la** avant de livrer.
+Sorties dans `projets/<nom>/` : `<titre>.mp4` (+ `_9x16.mp4`), `<titre>.srt`, `miniature*.jpg`. Son normalisé −14 LUFS (deux passes), stéréo, voix traitées.
+**Regarde** `build/planche.jpg` avant de livrer.
 
-## 4. Livrer
-Donne : le chemin du MP4, la durée, le résumé de l'histoire, et 2–3 pistes d'amélioration concrètes (accroche alternative, chute plus forte, plan à changer). Propose une légende + hashtags pour la publication si c'est pour les réseaux.
+## 5. Livrer (kit de publication)
+Donne : chemins des fichiers, durée, résumé, puis un **kit de publication** :
+- 3 titres au choix (≤ 60 caractères, curiosité sans mentir) ;
+- description courte (2 lignes) + 5 à 8 hashtags pertinents ;
+- l'instant de la vidéo à utiliser en couverture si la miniature auto ne convient pas ;
+- 2–3 pistes concrètes d'amélioration (accroche alternative, chute plus forte, plan à changer).
 
 ## Sans Claude Code
 `python studio.py nouveau "idée" --format 9:16 --style cube3d` écrit le scénario via l'API Claude si une clé est disponible (`ANTHROPIC_API_KEY` ou `ant auth login`), sinon copie un modèle à adapter. `python studio.py interface` ouvre une interface web locale en français.
@@ -61,6 +67,6 @@ Donne : le chemin du MP4, la durée, le résumé de l'histoire, et 2–3 pistes 
 |---|---|
 | `décor inconnu` | voir la liste par style dans `references/format_projet.md` |
 | voix robotique | edge-tts inaccessible → repli Piper ; vérifier réseau/proxy |
-| rendu 3D lent | normal sans GPU (≈ 8 s de calcul par seconde de vidéo) ; utiliser `--apercu` pour itérer |
+| rendu 3D lent | normal sans GPU (≈ 8 s de calcul par seconde de vidéo) ; `--rapide` ou `--apercu` pour itérer |
 | sous-titre décalé | le texte affiché doit être identique au texte dit ; éviter les abréviations (« 3 » → « trois ») |
 | personnage hors champ | `camera: "large"` ou `focus` (3D), ou ajuster `x` |

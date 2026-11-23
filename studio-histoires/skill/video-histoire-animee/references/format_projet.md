@@ -9,6 +9,7 @@ Exemples complets : `exemples/blagues_papa.json` (plat2d 16:9) et `exemples/bail
   "style": "plat2d",             // "plat2d" (2D vectoriel) ou "cube3d" (3D cubique)
   "langue": "fr",                // "fr" ou "en" (choix des voix par défaut)
   "sous_titres": "bulle",        // "bulle" (à côté de la tête, 2D), "mot" (1 mot au centre), "phrase" (bas d'écran), "aucun"
+  "sous_titres_vertical": "mot", // style utilisé quand on décline en 9:16 (--formats 16:9,9:16)
   "musique": {"ambiance": "comique", "volume": 0.22},  // ambiance par défaut
   "musique_fichier": "ma_musique.mp3",                  // optionnel : remplace la musique générée
   "rythme": 1.0,                 // multiplie les pauses entre répliques (0.7 = plus nerveux)
@@ -79,9 +80,11 @@ Options communes : `prolonge` (s après la réplique), `son` (false = pas de bru
 ## Style `plat2d`
 Monde 1920×1080 ; `x` des acteurs = fraction de largeur (0 → 1). En 9:16 la caméra recadre automatiquement en plans serrés.
 
-**Décors** : bus (`vitesse`, `panneau`, `ambiance:nuit`), rue (`enseigne`, `ambiance` jour/coucher/nuit/matin, `arret`, `banc`), cuisine, chambre (`ambiance:nuit`), buanderie, salon, parc (`ambiance`, `banc`, `cloture`), cimetiere (`nom`), salle_sport (`enseigne`, `couleur`), bureau, ville_nuit, porte (`texte` du paillasson, `ouverte`), immeuble (`couleur`), couleur (`couleur`, `couleur2`).
+**Décors** : bus (`vitesse`, `panneau`, `ambiance:nuit`), rue (`enseigne`, `ambiance` jour/coucher/nuit/matin, `arret`, `banc`), cuisine, chambre (`ambiance:nuit`), buanderie, salon, parc (`ambiance`, `banc`, `cloture`), cimetiere (`nom`), salle_sport (`enseigne`, `couleur`), bureau, ville_nuit, porte (`texte` du paillasson, `ouverte`), immeuble (`couleur`), ecole (`tableau`), hopital, supermarche (`enseigne`), plage (`ambiance`), restaurant, couleur (`couleur`, `couleur2`).
 
 **Acteur** : `id`, `x`, `pose` (assis/debout ; dans le bus : assis par défaut, aimanté aux sièges), `tient` (telephone, bouquet, tasse, haltere, sac, livre, cadeau, gourde, rien), `emotion`, `regard` (gauche/droite), `echelle`, `entre`/`sort` (gauche/droite : entrée/sortie en marchant).
+
+**Animation automatique** : bouche par visèmes (A/O/E/M selon les lettres prononcées), sourcils levés sur les mots-clés, hochements des personnages qui écoutent, clignements, respiration, « punch » de caméra à chaque coupe.
 
 **Gestes** : pointe, explique, salue, leve_bras, joie, bras_croises, mains_hanches, tete, haussement, saute.
 
@@ -100,7 +103,7 @@ Monde 1920×1080 ; `x` des acteurs = fraction de largeur (0 → 1). En 9:16 la c
 ## Style `cube3d`
 Monde en mètres, sol à y = 0. `x`, `z` en mètres (−6…6), `rot` en degrés (0 = face à +z).
 
-**Décors** : ville (`nuit`, `batiment`), chambre (`mur`, `mur2`, `affiche`, `canape`), place_nuit (`scene_dj`, `eteint`), pelouse, salle (`enseigne`), salle_sport, couleur (`couleur`).
+**Décors** : ville (`nuit`, `batiment`), chambre (`mur`, `mur2`, `affiche`, `canape`), place_nuit (`scene_dj`, `eteint`), pelouse, salle (`enseigne`), salle_sport, plage (`coucher`), classe (`tableau`), couleur (`couleur`).
 
 **Scène** : `foule` (nombre de figurants), `foule_anim` (danse, bras_leves, saute, assis, scroll), `foule_emotion`, `ouverture` (plan de la 1re réplique), `focus` (acteur suivi), `camera_pos` / `camera_cible` ([x,y,z] pour un plan fixe), `narrateur_visible`.
 

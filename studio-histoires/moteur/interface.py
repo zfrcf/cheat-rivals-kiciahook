@@ -26,7 +26,7 @@ textarea{height:62vh}#log{white-space:pre-wrap;font:12px ui-monospace,monospace;
 <h2 style="margin-top:16px">Projets</h2><div id="liste"></div></section>
 <section><h2>Scénario (projet.json) — <span id="nom"></span></h2><textarea id="json" spellcheck="false"></textarea>
 <button onclick="sauver()">💾 Enregistrer</button><button onclick="lancer('verifier')">✅ Vérifier</button><button onclick="lancer('voix')">🎙️ Voix</button>
-<button onclick="lancer('instantanes')">📸 Instantanés</button><button onclick="lancer('apercu')">⚡ Aperçu rapide</button><button class="j" onclick="lancer('tout')">🎬 Vidéo finale</button></section>
+<button onclick="lancer('controle')">🔎 Contrôle qualité</button><button onclick="lancer('apercu')">⚡ Aperçu rapide</button><button class="j" onclick="lancer('tout')">🎬 Vidéo finale</button><button class="j" onclick="lancer('tout2')">🎬 16:9 + 9:16</button></section>
 <section><h2>Journal</h2><div id="log"></div><h2 style="margin-top:12px">Résultat</h2><div id="res"></div></section></main>
 <script>
 let cur=null;const $=i=>document.getElementById(i);
@@ -36,7 +36,7 @@ async function sauver(){try{JSON.parse($('json').value)}catch(e){alert('JSON inv
 async function lancer(c){if(!cur)return alert('Choisis un projet');await sauver();await fetch('/api/lancer?nom='+cur+'&cmd='+c,{method:'POST'});suivre()}
 async function nouveau(){const i=$('idee').value.trim();if(!i)return;await fetch('/api/nouveau',{method:'POST',body:JSON.stringify({idee:i,format:$('fmt').value,style:$('sty').value})});suivre(true)}
 async function suivre(rel){const r=await (await fetch('/api/tache')).json();$('log').textContent=r.log;$('log').scrollTop=1e9;if(r.en_cours)setTimeout(()=>suivre(rel),1000);else{if(rel)liste();resultats()}}
-async function resultats(){if(!cur)return;const r=await (await fetch('/api/resultats?nom='+cur)).json();$('res').innerHTML=r.videos.map(v=>`<div>${v}</div><video controls src="/f/${cur}/${v}?${Date.now()}"></video>`).join('')+r.images.map(v=>`<img src="/f/${cur}/${v}?${Date.now()}">`).join('')}
+async function resultats(){if(!cur)return;const r=await (await fetch('/api/resultats?nom='+cur)).json();$('res').innerHTML=(r.rapport?`<pre style="white-space:pre-wrap;background:#0e0c22;padding:8px;border-radius:8px">${r.rapport.replace(/</g,'&lt;')}</pre>`:'')+r.videos.map(v=>`<div>${v}</div><video controls src="/f/${cur}/${v}?${Date.now()}"></video>`).join('')+r.images.map(v=>`<img src="/f/${cur}/${v}?${Date.now()}">`).join('')}
 liste();
 </script></body></html>"""
 
@@ -67,7 +67,7 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/api/tache": return self.rep(TACHE)
         if u.path == "/api/resultats":
             d = PROJETS / nom
-            return self.rep({"videos": [p.name for p in sorted(d.glob("*.mp4"))], "images": [str(p.relative_to(d)) for p in [d / "build/planche.jpg", d / "build/planche_instantanes.jpg"] if p.exists()]})
+            return self.rep({"videos": [p.name for p in sorted(d.glob("*.mp4"))], "images": [str(p.relative_to(d)) for p in [*sorted(d.glob("miniature*.jpg")), d / "build/planche.jpg", d / "build/planche_instantanes.jpg"] if p.exists()], "rapport": (d / "build/rapport.md").read_text(encoding="utf-8") if (d / "build/rapport.md").exists() else ""})
         if u.path.startswith("/f/"):
             f = (PROJETS / unquote(u.path[3:])).resolve()
             if not str(f).startswith(str(PROJETS.resolve())) or not f.exists(): self.send_response(404); return self.end_headers()
@@ -88,7 +88,8 @@ class H(BaseHTTPRequestHandler):
             plan = {"verifier": [[py, st, "verifier", dos]], "voix": [[py, st, "voix", dos]],
                     "instantanes": [[py, st, "voix", dos], ["node", str(RACINE / "moteur/rendu.js"), dos + "/build", "--instantanes", "auto"],
                                     ["bash", "-c", f"cd '{dos}/build/instantanes' && ffmpeg -v error -y -pattern_type glob -i '*.jpg' -vf 'scale=480:-1,tile=4x6' -frames:v 1 ../planche_instantanes.jpg"]],
-                    "apercu": [[py, st, "tout", dos, "--apercu"]], "tout": [[py, st, "tout", dos]]}.get(c)
+                    "controle": [[py, st, "controle", dos]],
+                    "apercu": [[py, st, "tout", dos, "--apercu", "--rapide"]], "tout": [[py, st, "tout", dos]], "tout2": [[py, st, "tout", dos, "--formats", "16:9,9:16"]]}.get(c)
             if plan: threading.Thread(target=executer, args=(plan,)).start()
             return self.rep({"ok": bool(plan)})
         self.send_response(404); self.end_headers()

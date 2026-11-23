@@ -44,6 +44,7 @@
     ctx.save(); ctx.beginPath(); for (let x = -880; x < 2900; x += 480) { const X = x + 22, Y = -260, w = 436, h = 700, r = 30; ctx.moveTo(X + r, Y); ctx.arcTo(X + w, Y, X + w, Y + h, r); ctx.arcTo(X + w, Y + h, X, Y + h, r); ctx.arcTo(X, Y + h, X, Y, r); ctx.arcTo(X, Y, X + w, Y, r); ctx.closePath(); } ctx.clip();
     rect(-2000, -300, 6000, 760, o.ambiance === 'nuit' ? '#1b2050' : '#c9ecff');
     for (let k = -2; k < 5; k++) { const bx = k * 1400 - v, n = o.ambiance === 'nuit'; immeuble(bx + 20, 440, 230, 330, '#f7c873', n); immeuble(bx + 300, 440, 260, 260, '#f28b82', n); arbre(bx + 640, 440, 1.1, '#6cc56a'); immeuble(bx + 760, 440, 220, 360, '#f6a97a', n); immeuble(bx + 1030, 440, 300, 300, '#b9e3f5', n); rect(bx, 400, 1400, 40, '#9aa0aa'); }
+    const v2 = (t * (o.vitesse ?? 240) * 2.2) % 900; for (let k = -1; k < 5; k++) { const lx = k * 900 - v2; rect(lx, 40, 16, 400, '#5d6170'); rrect(lx - 30, 30, 76, 22, 10, '#5d6170'); disque(lx + 40, 52, 12, '#fff3b0'); }
     if (o.panneau) { const px = 2600 - ((t * (o.vitesse ?? 240)) % 3400); rrect(px, 150, 300, 160, 12, '#ff7aa5', ['#fff', 8]); S.texte(ctx, o.panneau.toUpperCase(), px + 150, 230, 34, '#fff', { contour: '#d94a7a', epaisseur: 0.08, ombre: false }); }
     ctx.restore();
     // barres jaunes
@@ -158,6 +159,42 @@
     for (let i = 0; i < 6; i++) { const x = -150 + i * 400; rrect(x, 560, 180, 340, 10, '#5a3a22'); disque(x + 150, 740, 8, '#ffc531'); }
     sol(900, '#cfcfd6');
   };
+  DECORS.ecole = (t, o) => {
+    ciel('#f5e6c8', '#f5e6c8'); sol(860, '#c9a27a'); rect(-2000, 840, 6000, 20, '#a8825c');
+    rrect(380, 150, 1160, 470, 14, '#2f5d4a', ['#8a5a3c', 22]); rect(420, 600, 1080, 18, '#8a5a3c');
+    S.texte(ctx, o.tableau || '2 + 2 = 4', 960, 330, 90, '#f4f4f4', { contour: '#2f5d4a', epaisseur: 0.02, ombre: false, poids: 600 });
+    rect(1300, 605, 60, 14, '#fff'); rect(1380, 605, 40, 14, '#ffd23f');
+    for (const x of [140, 1700]) { rrect(x - 90, 200, 180, 240, 10, '#bfe6ff', ['#fff', 12]); rect(x - 4, 200, 8, 240, '#fff'); }
+    disque(960, 90, 45, '#fff'); ctx.strokeStyle = '#333'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(960, 90); ctx.lineTo(960 + Math.cos(t) * 30, 90 + Math.sin(t) * 30); ctx.moveTo(960, 90); ctx.lineTo(960, 62); ctx.stroke();
+  };
+  DECORS.hopital = (t, o) => {
+    ciel('#dff3f1', '#dff3f1'); rect(-2000, 560, 6000, 300, '#bfe5e0'); sol(860, '#e8eef2'); for (let x = -2000; x < 4000; x += 120) rect(x, 860, 3, 600, 'rgba(0,0,0,0.06)');
+    rrect(1200, 640, 600, 120, 20, '#ffffff', ['#c8d3d8', 6]); rrect(1180, 560, 40, 300, 10, '#9fb0b8'); rrect(1260, 610, 170, 60, 26, '#fff', ['#d9e3e8', 4]); rrect(1350, 650, 420, 90, 20, '#7fc8f8');
+    rect(1100, 300, 8, 560, '#9fb0b8'); rrect(1070, 300, 70, 110, 18, 'rgba(200,240,255,0.9)', ['#9fb0b8', 4]);
+    rrect(300, 180, 380, 260, 10, '#bfe6ff', ['#fff', 14]); ctx.fillStyle = '#e2462f'; rect(1500, 140, 120, 36, '#e2462f'); rect(1542, 98, 36, 120, '#e2462f');
+    for (let k = 0; k < 7; k++) rect(80 + k * 50, 120, 30, 600, 'rgba(150,200,210,0.35)');
+  };
+  DECORS.supermarche = (t, o) => {
+    ciel('#f7f7fb', '#f7f7fb'); sol(880, '#dcdde6'); for (let x = -2000; x < 4000; x += 160) rect(x, 880, 3, 600, 'rgba(0,0,0,0.06)');
+    const cs = ['#e2462f', '#ffd23f', '#3ec1f3', '#2ecc71', '#ff8a3d', '#c77dff', '#fff'];
+    for (const [x0, x1] of [[-300, 700], [1220, 2220]]) { rect(x0, 200, x1 - x0, 680, '#8d99ae'); for (let j = 0; j < 4; j++) { rect(x0, 330 + j * 150, x1 - x0, 14, '#5c677d'); for (let i = 0; i < (x1 - x0) / 50; i++) rrect(x0 + 8 + i * 50, 250 + j * 150, 38, 80, 6, cs[(i * 3 + j) % 7]); } }
+    enseigne(960, 120, 420, o.enseigne || 'Promo -50%', '#e2462f');
+    rrect(850, 700, 220, 120, 10, 'rgba(0,0,0,0)', ['#666', 8]); for (let i = 0; i < 4; i++) rect(860 + i * 52, 700, 4, 120, '#666'); disque(870, 840, 16, '#333'); disque(1050, 840, 16, '#333');
+  };
+  DECORS.plage = (t, o) => {
+    const a = AMB[o.ambiance || 'jour']; ciel(a[0], a[1]); disque(1600, 160, 80, o.ambiance === 'coucher' ? '#ffcf70' : '#fff3b0');
+    rect(-2000, 520, 6000, 260, '#2f9fd8'); for (let k = 0; k < 14; k++) { const x = ((k * 230 + t * 40) % 2400) - 200; ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(x, 560 + (k % 4) * 50, 30, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); }
+    const vague = 760 + Math.sin(t * 1.5) * 10; ctx.fillStyle = '#e9f7ff'; ctx.beginPath(); ctx.moveTo(-2000, vague); for (let x = -2000; x <= 4000; x += 80) ctx.lineTo(x, vague + Math.sin(x / 90 + t * 2) * 8); ctx.lineTo(4000, 2000); ctx.lineTo(-2000, 2000); ctx.fill();
+    sol(785, '#f3d9a4'); rect(1380, 520, 12, 400, '#8a5a3c'); ctx.beginPath(); ctx.moveTo(1180, 560); ctx.quadraticCurveTo(1386, 380, 1592, 560); ctx.fillStyle = '#e2462f'; ctx.fill(); rrect(1250, 880, 300, 40, 10, '#3ec1f3');
+    nuage(300 + (t * 10) % 300, 150, 1);
+  };
+  DECORS.restaurant = (t, o) => {
+    ciel('#7a3b2e', '#7a3b2e'); for (let x = -2000; x < 4000; x += 80) rect(x, -1200, 40, 2000, 'rgba(255,255,255,0.04)'); sol(860, '#5a3a22');
+    for (const x of [300, 960, 1620]) { ctx.strokeStyle = '#222'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x, -200); ctx.lineTo(x, 120); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x - 60, 170); ctx.lineTo(x + 60, 170); ctx.lineTo(x + 30, 120); ctx.lineTo(x - 30, 120); ctx.fillStyle = '#ffd23f'; ctx.fill(); ctx.fillStyle = 'rgba(255,220,120,0.12)'; ctx.beginPath(); ctx.moveTo(x - 60, 170); ctx.lineTo(x + 60, 170); ctx.lineTo(x + 260, 860); ctx.lineTo(x - 260, 860); ctx.fill(); }
+    rrect(560, 300, 800, 260, 10, '#1b2050', ['#d9b38c', 14]); for (let i = 0; i < 20; i++) disque(600 + (i * 97) % 720, 330 + (i * 53) % 200, 3, '#ffe08a');
+    rect(660, 740, 600, 30, '#f4f4f4'); for (let i = 0; i < 12; i++) rect(660 + i * 50, 740, 25, 30, i % 2 ? '#e2462f' : '#f4f4f4'); rect(700, 770, 20, 90, '#3a2a1a'); rect(1200, 770, 20, 90, '#3a2a1a');
+    rect(900, 690, 14, 50, '#fff'); disque(907, 682, 9, '#ffb347');
+  };
   DECORS.couleur = (t, o) => { ciel(o.couleur || '#7b4dff', o.couleur2 || o.couleur || '#7b4dff'); };
 
   // ================= PERSONNAGES =================
@@ -209,7 +246,7 @@
     // sourcils
     ctx.strokeStyle = look.couleur_sourcils || (look.cheveux === 'chauve' ? '#ccc' : (look.couleur_cheveux || '#2a2238')); ctx.lineWidth = r * 0.07; ctx.lineCap = 'round';
     const sb = { triste: [0.12, -0.08], fache: [-0.14, 0.1], surpris: [0, 0], choque: [0, 0], gene: [0.08, -0.04] }[em] || [0, 0];
-    const lift = em === 'surpris' || em === 'choque' ? -r * 0.12 : 0;
+    const lift = em === 'surpris' || em === 'choque' ? -r * 0.12 : st.accent ? -r * 0.07 * st.accent : 0;
     for (const sx of [-1, 1]) { ctx.beginPath(); ctx.moveTo(sx * r * 0.52, -r * 0.33 + lift + sb[1] * r * 0); ctx.lineTo(sx * r * 0.2, -r * 0.33 + lift + sb[0] * r * -1); ctx.stroke(); }
     // nez
     ctx.strokeStyle = shade(peau, -0.25); ctx.lineWidth = r * 0.045; ctx.beginPath(); ctx.arc(0, r * 0.16, r * 0.08, 0.2, Math.PI - 0.2); ctx.stroke();
@@ -221,8 +258,11 @@
     // bouche
     const my = r * 0.47, o = st.bouche || 0;
     ctx.lineCap = 'round';
-    if (o > 0.08) {
-      const h = r * (0.06 + o * 0.26), w = r * (0.22 + o * 0.08);
+    const vis = st.viseme || 'A';
+    if (o > 0.08 && vis === 'M') { ctx.strokeStyle = S.ENCRE; ctx.lineWidth = r * 0.06; ctx.beginPath(); ctx.moveTo(-r * 0.16, my); ctx.quadraticCurveTo(0, my + r * 0.03, r * 0.16, my); ctx.stroke(); }
+    else if (o > 0.08) {
+      const fw = { A: 1, O: 0.62, E: 1.3, I: 1.2 }[vis] || 1, fh = { A: 1, O: 0.95, E: 0.55, I: 0.45 }[vis] || 1;
+      const h = r * (0.06 + o * 0.26) * fh, w = r * (0.22 + o * 0.08) * fw;
       ctx.beginPath(); ctx.ellipse(0, my, w, h, 0, 0, 7); ctx.fillStyle = '#7a2230'; ctx.fill();
       ctx.save(); ctx.clip(); disque(0, my + h * 0.9, w * 0.7, '#ff7a8a'); rect(-w, my - h, w * 2, h * 0.35, '#fff'); ctx.restore();
       ctx.lineWidth = r * 0.035; ctx.strokeStyle = S.ENCRE; ctx.beginPath(); ctx.ellipse(0, my, w, h, 0, 0, 7); ctx.stroke();
@@ -270,7 +310,7 @@
       for (const [sx, ph] of [[-1, pas], [1, -pas]]) { ctx.save(); ctx.translate(sx * 24, torseBas); ctx.rotate(ph * 0.35); rrect(-20, -10, 40, 160, 18, bas); rrect(-26 + sx * 4, 135, 56, 26, 12, look.chaussures || '#e8e8f0'); ctx.restore(); }
     }
     // cheveux arrière
-    const headY = torseHaut - r * 0.92 + (st.parle ? Math.sin(st.t * 9) * 2 : 0);
+    const headY = torseHaut - r * 0.92 + (st.parle ? Math.sin(st.t * 9) * 2 : 0) + (st.ecoute || 0) * 5;
     ctx.save(); ctx.translate(st.regard * 4, headY); ctx.rotate((st.parle ? Math.sin(st.t * 3.1) * 0.03 : 0) + st.regard * 0.03); cheveux(look, r, false); ctx.restore();
     // torse
     const type = look.haut || 'sweat';
@@ -314,7 +354,7 @@
   // ================= ÉTAT DES ACTEURS DANS LE TEMPS =================
   function decorDe(sc) { return typeof sc.decor === 'string' ? { nom: sc.decor } : (sc.decor || { nom: 'couleur' }); }
   function xActeur(sc, a) { let x = (a.x ?? 0.5) * WW; if (decorDe(sc).nom === 'bus' && (a.pose || 'assis') === 'assis') { let best = SIEGES[0]; for (const s of SIEGES) if (Math.abs(s - x) < Math.abs(best - x)) best = s; x = best; } return x; }
-  function solDe(sc) { const n = decorDe(sc).nom; return ({ bus: 960, rue: 905, cuisine: 900, chambre: 895, buanderie: 905, salon: 895, parc: 950, cimetiere: 945, salle_sport: 900, bureau: 900, ville_nuit: 900, porte: 960, immeuble: 925, couleur: 940 })[n] || 900; }
+  function solDe(sc) { const n = decorDe(sc).nom; return ({ bus: 960, rue: 905, cuisine: 900, chambre: 895, buanderie: 905, salon: 895, parc: 950, cimetiere: 945, salle_sport: 900, bureau: 900, ville_nuit: 900, porte: 960, immeuble: 925, couleur: 940, ecole: 900, hopital: 900, supermarche: 915, plage: 930, restaurant: 900 })[n] || 900; }
   function etatActeurs(si, t) {
     const sc = TL.scenes[si], def = TL.projet.scenes[si];
     const lignes = TL.lignes.filter((l) => l.scene === si);
@@ -341,12 +381,17 @@
         const L = ligneCourante;
         if (L.qui === a.id) {
           st.parle = true; st.bouche = S.env(L, t, FPS); st.geste = L.geste || null;
+          const mot = L.mots.find((m) => t >= m.d && t < m.f);
+          if (mot) { const lettres = mot.m.toLowerCase().normalize('NFD').replace(/[^a-z]/g, ''); const k = lettres[Math.min(lettres.length - 1, Math.floor(((t - mot.d) / Math.max(0.05, mot.f - mot.d)) * lettres.length))] || 'a';
+            st.viseme = 'mbp'.includes(k) ? 'M' : 'ouwy'.includes(k) ? 'O' : 'ie'.includes(k) ? 'E' : 'fv'.includes(k) ? 'I' : 'A';
+            if (mot.cle) st.accent = Math.min(1, (t - mot.d) / 0.12) * Math.min(1, (mot.f + 0.15 - t) / 0.15); }
           if (L.emotion) st.emotion = L.emotion;
           if (L.emotion === 'joie' || L.geste === 'saute') st.saut = Math.abs(Math.sin((t - L.debut) * 7)) * 40;
           if (L.emotion === 'fache') st.secoue = Math.sin(t * 40) * 0.02;
         } else if (st.marche == null && a.regard == null) {
           const sp = (def.acteurs || []).find((o) => o.id === L.qui); if (sp) st.regard = xActeur(def, sp) > st.x ? 1 : -1;
         }
+        if (L.qui !== a.id) st.ecoute = Math.max(0, Math.sin((t - L.debut) * 4.2)) * (hash(a.id + L.debut) > 0.4 ? 1 : 0);
         if (L.reactions && L.reactions[a.id]) st.emotion = L.reactions[a.id];
       }
       if (st.marche == null && st.pose !== 'assis' && !st.parle) st.marche = null;
@@ -378,12 +423,12 @@
     let cx = 960, cy = 540, z = zLarge;
     if (type === 'large') {
       cx = def.centre != null ? def.centre * WW : 960; cy = 540; z = zLarge * (def.zoom || 1);
-      if (acteurs.length && def.centre == null) { const xs = acteurs.map((a) => a.x); const span = Math.max(...xs) - Math.min(...xs); cx = (Math.max(...xs) + Math.min(...xs)) / 2; if (vertical) cy = 600; else { z = clamp(1920 / (span + 1000), 1, 1.45) * (def.zoom || 1); cy = 540 + (z - 1) * 260; } }
+      if (acteurs.length && def.centre == null) { const xs = acteurs.map((a) => a.x); const span = Math.max(...xs) - Math.min(...xs); cx = (Math.max(...xs) + Math.min(...xs)) / 2; if (vertical) { cy = 640; z = clamp(607 / (span + 420), 0.62, 1.0) * (def.zoom || 1); } else { z = clamp(1920 / (span + 1000), 1, 1.45) * (def.zoom || 1); cy = 540 + (z - 1) * 260; } }
     }
     else if (sp && (type === 'moyen' || type === 'gros')) { const h = tete(def, sp); z = (type === 'gros' ? 2.0 : 1.45) * (vertical ? 0.75 : 1); cx = h.x; cy = h.y + (type === 'gros' ? 110 : 190) * (vertical ? 1.2 : 1); }
     else if (type === 'deux' && acteurs.length) { const sp2 = sp || acteurs[0]; let other = null, d = 1e9; for (const a of acteurs) if (a !== sp2 && Math.abs(a.x - sp2.x) < d) { d = Math.abs(a.x - sp2.x); other = a; } const xs = other ? [sp2.x, other.x] : [sp2.x]; cx = (Math.min(...xs) + Math.max(...xs)) / 2; const span = Math.max(...xs) - Math.min(...xs) + 520; z = clamp((vertical ? 607 : 1920) / span, vertical ? 0.55 : 1, vertical ? 1.0 : 1.6); cy = tete(def, sp2).y + 260; }
     // léger travelling avant
-    const t0 = L && L.scene === si ? L.debut : sc.debut; const p = clamp((t - t0) / 6, 0, 1); z *= 1 + 0.035 * p;
+    const t0 = L && L.scene === si ? L.debut : sc.debut; const p = clamp((t - t0) / 6, 0, 1); z *= 1 + 0.035 * p; if (type !== (plan.dernier || '') || t - t0 < 0.25) z *= 1 + 0.025 * (1 - S.easeOut((t - t0) / 0.25)); plan.dernier = type;
     // limites
     const demiW = W / (baseScale * z) / 2, demiH = H / (baseScale * z) / 2;
     if (demiW * 2 < WW) cx = clamp(cx, demiW, WW - demiW); else cx = 960;

@@ -53,6 +53,7 @@
   S.lignesScene = (TL, si) => TL.lignes.filter((l) => l.scene === si);
   S.ligneA = (TL, t, marge = 0) => { for (const l of TL.lignes) if (t >= l.debut - 0.001 && t < l.fin + marge) return l; return null; };
   S.derniereLigne = (TL, t, si) => { let r = null; for (const l of TL.lignes) if (l.scene === si && l.debut <= t) r = l; return r; };
+  S.viseme = (L, t) => { const mot = L && L.mots.find((m) => t >= m.d && t < m.f); if (!mot) return 'A'; const l = mot.m.toLowerCase().normalize('NFD').replace(/[^a-z]/g, ''); const k = l[Math.min(l.length - 1, Math.floor(((t - mot.d) / Math.max(0.05, mot.f - mot.d)) * l.length))] || 'a'; return 'mbp'.includes(k) ? 'M' : 'ouwy'.includes(k) ? 'O' : 'ie'.includes(k) ? 'E' : 'A'; };
   S.env = (L, t, fps) => { if (!L || !L.env) return 0; const i = Math.floor((t - L.debut) * fps); return i >= 0 && i < L.env.length ? L.env[i] : 0; };
 
   // ---------- Texte détouré ----------

@@ -19,6 +19,24 @@ Règles tirées de l'analyse de deux vidéos de référence (voir `docs/analyse_
 - Une **onomatopée ou phrase-refrain** qui revient (ex. « Hush hush hush ») crée la signature sonore.
 - Chiffres absurdes affichés en gros (inserts `compteur` / `ecran`) : « 3000 vidéos aujourd'hui », « 23 h 59 de temps d'écran ».
 
+### Autres structures éprouvées
+| Structure | Déroulé | Style conseillé |
+|---|---|---|
+| **Le malentendu** | A croit X, B parle de Y, révélation drôle à la fin | plat2d 16:9 |
+| **Avant / après** | « Il y a un an je… » → déclic → aujourd'hui (contraste visuel fort) | plat2d ou cube3d |
+| **La règle absurde** | « Dans ce monde, il est interdit de… » → le héros enfreint la règle → conséquence inattendue | cube3d 9:16 |
+| **Le compte à rebours** | un délai affiché (« 3 heures avant… ») qui fait monter la tension | les deux |
+| **Le point de vue inattendu** | l'histoire racontée par un objet, un animal, un enfant | cube3d |
+| **La leçon du sage** | un jeune impatient, un ancien qui répond par une histoire | plat2d 16:9 |
+
+### Banque d'accroches (à adapter)
+- « Frère, [personne proche] est tellement [défaut]. »
+- « Dans ma ville, tout le monde [qualité]. Sauf moi. »
+- « J'ai fait [action banale] et ça a [conséquence énorme]. »
+- « Personne ne me croit, mais [affirmation absurde]. »
+- « Il me restait [délai] pour [enjeu]. »
+- « Tu sais pourquoi [question intrigante] ? »
+
 ## Règles d'écriture
 1. **Accroche en 2 secondes** : la 1ʳᵉ réplique pose un conflit ou une absurdité. Jamais de présentation.
 2. **Répliques ≤ 12 mots**, oralité (« Mec, », « Frère, », « Bref, »), questions-réponses rapides.
@@ -49,6 +67,14 @@ Règles tirées de l'analyse de deux vidéos de référence (voir `docs/analyse_
 | narrateur posé | `fr-FR-VivienneMultilingualNeural` | |
 | accent belge / suisse / québécois | `fr-BE-GerardNeural`, `fr-CH-FabriceNeural`, `fr-CA-AntoineNeural` | |
 Anglais : `en-US-AndrewNeural` (narrateur B), `en-US-AvaNeural`.
+
+## Grille d'auto-évaluation (note chaque critère /5 avant d'écrire le JSON)
+1. **Accroche** : donne-t-elle envie de rester dès la 1ʳᵉ phrase ?
+2. **Enjeu** : sait-on ce que veut le personnage / ce qui coince ?
+3. **Escalade** : chaque réplique ajoute-t-elle une info ou un rire ?
+4. **Chute** : surprend-elle ET recadre-t-elle ce qu'on a vu ?
+5. **Visuel** : chaque idée a-t-elle une image (insert, geste, symbole, décor) ?
+Moins de 20/25 → réécris avant de fabriquer.
 
 ## Check-list avant rendu
 - [ ] Accroche ≤ 2 s ? Chute claire ? Durée cible respectée (`verifier` l'estime) ?
