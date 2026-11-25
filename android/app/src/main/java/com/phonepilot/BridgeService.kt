@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * Service de premier plan permanent : tient la connexion SORTANTE vers le bridge du Mac
+ * Service de premier plan permanent : tient la connexion SORTANTE vers le serveur PhonePilot (cloud)
  * (aucun port ouvert sur le téléphone), exécute les requêtes, affiche « PhonePilot actif » + STOP.
  */
 class BridgeService : Service() {
@@ -76,7 +76,7 @@ class BridgeService : Service() {
     private fun connect() {
         if (connecting || connected || !Prefs.enabled) return
         val url = Prefs.bridgeUrl
-        if (url.isBlank() || Prefs.token.isBlank()) { Journal.add("Pas appairé : scanne le QR code du Mac."); return }
+        if (url.isBlank() || Prefs.token.isBlank()) { Journal.add("Adresse du serveur à saisir dans l'app."); return }
         connecting = true
         ws = http.newWebSocket(Request.Builder().url(url).build(), object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
@@ -84,6 +84,7 @@ class BridgeService : Service() {
                     "type" to "hello", "token" to Prefs.token,
                     "device" to json("model" to Build.MODEL, "android" to Build.VERSION.RELEASE, "app" to "0.1.0"),
                     "methods" to Router.methods().toJsonArray { it }, "shizuku" to ShizukuShell.active,
+                    "code" to Prefs.pairingCode.ifBlank { null },
                 ).toString())
             }
 
@@ -92,7 +93,7 @@ class BridgeService : Service() {
                 when (msg.optString("type")) {
                     "welcome" -> {
                         connecting = false; connected = true; backoffMs = 2000
-                        Journal.add("✅ Connecté au Mac"); refresh()
+                        Journal.add("✅ Connecté au serveur"); refresh()
                         if (Prefs.stopped) sendEvent("stop", json("reason" to "STOP actif sur le téléphone"))
                     }
                     "req" -> scope.launch { handle(webSocket, msg) }
@@ -160,8 +161,8 @@ class BridgeService : Service() {
         val stop = PendingIntent.getBroadcast(this, 1, Intent(this, ActionReceiver::class.java).setAction(ActionReceiver.STOP), PendingIntent.FLAG_IMMUTABLE)
         val state = when {
             Prefs.stopped -> "⛔ ARRÊT D'URGENCE — ouvre l'app pour reprendre"
-            connected -> "Connecté au Mac" + if (ShizukuShell.active) " · Shizuku actif" else " · Shizuku inactif"
-            else -> "Recherche du Mac…"
+            connected -> "Connecté au serveur"
+            else -> "Recherche du serveur…"
         }
         return Notification.Builder(this, PhonePilotApp.CH_STATUS)
             .setSmallIcon(R.drawable.ic_stat)
@@ -229,7 +230,7 @@ object Confirm {
     private val seq = AtomicInteger(100)
 
     suspend fun request(category: String, summary: String, timeoutSec: Int): Boolean {
-        if (!Prefs.requiresConfirm(category)) { Journal.add("✔️ Auto-validé ($category désactivé dans l'app)"); return true }
+        if (category != "connexion_claude" && !Prefs.requiresConfirm(category)) { Journal.add("✔️ Auto-validé ($category désactivé dans l'app)"); return true }
         val ctx = PhonePilotApp.instance
         val n = seq.incrementAndGet()
         val id = n.toString()

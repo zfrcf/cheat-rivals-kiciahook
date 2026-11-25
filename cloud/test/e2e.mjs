@@ -12,11 +12,11 @@ const O = `http://127.0.0.1:${PORT}`;
 const b64u = (b) => Buffer.from(b).toString("base64url");
 const ok = (m) => console.log("  ✓", m);
 
-const dev = spawn("npx", ["wrangler", "dev", "--port", String(PORT), "--ip", "127.0.0.1", "--persist-to", `.wrangler/e2e-${Date.now()}`], { stdio: ["ignore", "pipe", "pipe"] });
+const dev = spawn("npx", ["wrangler", "dev", "--port", String(PORT), "--ip", "127.0.0.1", "--persist-to", `.wrangler/e2e-${Date.now()}`], { stdio: ["ignore", "pipe", "pipe"], detached: true });
 let log = "";
 dev.stdout.on("data", (d) => (log += d));
 dev.stderr.on("data", (d) => (log += d));
-const stop = (code) => { dev.kill("SIGTERM"); process.exit(code); };
+const stop = (code) => { try { process.kill(-dev.pid, "SIGTERM"); } catch { dev.kill("SIGTERM"); } process.exit(code); };
 for (let i = 0; i < 120 && !/Ready on/.test(log); i++) await new Promise((r) => setTimeout(r, 500));
 if (!/Ready on/.test(log)) { console.error(log); stop(1); }
 

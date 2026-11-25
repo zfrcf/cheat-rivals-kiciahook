@@ -46,6 +46,11 @@ object ScreenCapture {
         BridgeService.event("methods", Router.methods().toJsonArray { it })
     }
 
+    fun virtualDisplayFor(surface: android.view.Surface, w: Int, h: Int): VirtualDisplay {
+        val p = projection ?: throw RpcError("CAPTURE_OFF", "Capture non autorisée : ouvre l'app PhonePilot › « Autoriser la capture d'écran ».")
+        return p.createVirtualDisplay("phonepilot-rec", w, h, 320, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, surface, null, Handler(thread.looper))
+    }
+
     suspend fun capture(quality: Int = 70, maxWidth: Int = 1080): JSONObject {
         val r = reader ?: throw RpcError("CAPTURE_OFF", "Capture non autorisée : ouvre l'app PhonePilot › « Autoriser la capture d'écran ».")
         var img = r.acquireLatestImage()

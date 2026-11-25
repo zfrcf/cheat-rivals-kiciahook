@@ -21,7 +21,8 @@ export function statusPage(s: { connected: boolean; device: { model?: string; an
 <p>${s.connected ? `<b class="ok">● Téléphone connecté</b> (${esc(s.device.model ?? "?")}, Android ${esc(s.device.android ?? "?")})` : `<b class="ko">● Téléphone hors ligne</b>`}</p>
 <p>Appairage : ${s.paired ? "fait" : "<b>en attente</b> — ouvre l'app PhonePilot et saisis l'adresse de cette page."}</p>
 ${s.stopped ? `<p class="ko"><b>⛔ Arrêt d'urgence actif</b> — reprise depuis l'app.</p>` : ""}
-<p>Adresse du connecteur MCP à ajouter dans Claude :<br><code>${esc(s.origin)}/mcp</code></p>`,
+<p>Adresse du connecteur MCP à ajouter dans Claude :<br><code>${esc(s.origin)}/mcp</code></p>
+<p>App Android : <a href="/PhonePilot.apk">télécharger PhonePilot.apk</a> — puis, dans l'app, saisis l'adresse <code>${esc(s.origin)}</code></p>`,
   );
 }
 

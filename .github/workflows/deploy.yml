@@ -1,0 +1,44 @@
+name: Déployer PhonePilot (cloud)
+# Compile l'app Android, puis déploie le serveur MCP + l'APK sur Cloudflare Workers.
+# Secrets requis (Settings › Secrets and variables › Actions) :
+#   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, ANDROID_KEYSTORE_B64 (clé de signature stable)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, "claude/phonepilot-**"]
+    paths: ["bridge/**", "cloud/**", "android/**", ".github/workflows/deploy.yml"]
+concurrency: deploy
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Vérifier les secrets
+        env:
+          T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          A: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$T" ] || [ -z "$A" ]; then
+            echo "::error::Ajoute les secrets CLOUDFLARE_API_TOKEN et CLOUDFLARE_ACCOUNT_ID (voir docs/INSTALL.md), puis relance ce workflow."
+            exit 1
+          fi
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: android-actions/setup-android@v3
+      - name: Compiler l'APK signée
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS" ]; then echo "$KS" | base64 -d > "$RUNNER_TEMP/pp.jks"; export PP_KEYSTORE="$RUNNER_TEMP/pp.jks";
+          else echo "::warning::ANDROID_KEYSTORE_B64 absent : APK signée avec une clé temporaire (les mises à jour exigeront une réinstallation)."; fi
+          cd android && ./gradlew assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk ../cloud/public/PhonePilot.apk
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Tests du bridge
+        run: cd bridge && npm ci && npm test
+      - name: Déployer sur Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: cd cloud && npm ci && npx wrangler deploy | tee deploy.log && grep -o 'https://[^ ]*workers.dev' deploy.log | head -1 | sed 's/^/::notice::Adresse du serveur : /'

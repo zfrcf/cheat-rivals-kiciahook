@@ -199,7 +199,16 @@ export const screenTools: ToolDef[] = [
       if (n) await ctx.device.act("set_text", n, { text: a.value, replace: a.replace });
       else if (ctx.device.hub.has("ui.type_focused")) await ctx.device.call("ui.type_focused", { text: a.value, replace: a.replace });
       else await ctx.device.call("input.text", { text: a.value });
-      if (a.submit) await ctx.device.call("input.key", { key: "enter" });
+      if (a.submit) {
+        if (await ctx.device.can("input.key")) await ctx.device.call("input.key", { key: "enter" });
+        else {
+          // Sans shell, pas de touche Entrée : on touche le bouton d'envoi/recherche visible.
+          const nodes = await ctx.device.tree();
+          const btn = ["Envoyer", "Rechercher", "OK", "Valider", "Send", "Search", "Go"].map((t) => findNode(nodes, { text: t })).find((n) => n?.clickable) ?? nodes.find((n) => n.clickable && /send|search|submit/i.test(n.resId ?? ""));
+          if (btn) await ctx.device.act("click", btn);
+          else return { json: { ok: true, note: "Texte saisi ; aucun bouton d'envoi trouvé (relis ui_tree et touche le bon bouton)." } };
+        }
+      }
       return { json: { ok: true } };
     },
   }),

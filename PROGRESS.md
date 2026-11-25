@@ -1,23 +1,21 @@
 # PROGRESS — PhonePilot
 
-> Mis à jour à chaque étape. Légende : ✅ fait · 🔄 en cours · ⛔ bloqué (action d'Antoine requise)
+> Mis à jour à chaque étape. Légende : ✅ fait · 🔄 en cours · ⛔ action d'Antoine requise · ☐ à valider sur le P30
 
-## Session du 25/11/2026 (cloud Linux, sans téléphone ni Mac)
-| Phase | État | Détail |
+## Décision du 25/11/2026 : « jamais branché, plus de Mac »
+Le téléphone (4G/Wi-Fi) se connecte à un serveur PhonePilot sur **Cloudflare Workers** ; Claude y accède par un **connecteur MCP personnalisé** (OAuth approuvé sur le téléphone). Voir `docs/DECISIONS.md` D13–D18.
+
+| Bloc | État | Détail |
 |---|---|---|
-| §3 Évaluation | ✅ | `docs/EVALUATION.md` — mobile-mcp retenu pour le POC |
-| 1 — POC | ⛔ | Code/procédure prêts (`docs/INSTALL.md` §1). Nécessite le P30 branché au Mac. |
-| 2 — App compagnon | ✅ code · ☐ réel | `android/` compile (APK debug). Accessibilité, MediaProjection, WebSocket sortant, écran FR, STOP. |
-| 3 — Fichiers & données | ✅ code · ☐ réel | Fichiers, photos, SMS, appels, contacts, agenda, notifications. |
-| 4 — Shizuku | ✅ code · ☐ réel | Shell via Shizuku (réflexion `newProcess`, vérifiée sur l'API 13.1.5), démon launchd de relance. |
-| 5 — Distant + sécurité | ✅ code · ☐ réel | Tailscale, audit, confirmations, STOP testés en simulé. Distant via Remote Control (D8). |
-| 6 — 100 capacités | 🔄 | Toutes implémentées ; validation réelle à cocher dans `docs/CAPACITES.md`. |
-| 7 — Robustesse 24 h | ☐ | À mesurer sur le téléphone (EMUI). |
-| 8 — Docs | ✅ | README, INSTALL (chemins EMUI), DECISIONS, PROTOCOLE, CLAUDE.md. |
+| Serveur cloud (`cloud/`) | ✅ code · ✅ E2E simulé 20/20 | OAuth, appairage, 102 outils, liens 24 h, STOP, révocation, alarmes |
+| App Android (`android/`) | ✅ compile (APK release signée) · ☐ réel | Saisie d'adresse serveur, remplaçants natifs de Shizuku, révocation |
+| Déploiement auto | ✅ workflow · ⛔ secrets | `deploy.yml` : APK signée + serveur. Secrets à ajouter (INSTALL §2) |
+| 100 capacités | 🔄 | Toutes implémentées ; validation réelle à cocher dans `docs/CAPACITES.md` |
+| Robustesse 24 h (EMUI) | ☐ | À mesurer une fois installé |
+| Docs FR | ✅ | `docs/INSTALL.md` (100 % depuis le téléphone), DECISIONS, CAPACITES |
 
-Tests bridge : 20/20 verts (`cd bridge && npm test`). APK : `cd android && ./gradlew assembleDebug` OK.
-
-## Prochaine session (sur le Mac, téléphone branché)
-1. `scripts/mac/installer.sh` puis POC mobile-mcp « active le mode sombre ».
-2. `scripts/mac/installer-apk.sh`, permissions, appairage, puis dérouler `docs/CAPACITES.md` et cocher ☑.
-3. Corriger les libellés EMUI réels (tuiles réglages rapides, « Vider le cache », déclencheur photo, ids WhatsApp).
+## Prochaine étape (Antoine, ~20 min depuis le téléphone)
+1. Cloudflare : compte + jeton + ID de compte (INSTALL §1).
+2. Secrets GitHub : `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `ANDROID_KEYSTORE_B64` (INSTALL §2).
+3. Actions › « Déployer PhonePilot (cloud) » › Run. Puis INSTALL §4 à §6.
+4. Ensuite (session Claude) : dérouler `docs/CAPACITES.md`, corriger les libellés EMUI réels (tuiles, « Forcer l'arrêt », déclencheur photo, ids WhatsApp).

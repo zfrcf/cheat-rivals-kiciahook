@@ -16,10 +16,20 @@ android {
         versionName = "0.1.0"
     }
 
+    // Clé de signature stable fournie par la CI (secret GitHub ANDROID_KEYSTORE_B64) : jamais dans le dépôt.
+    val ks = System.getenv("PP_KEYSTORE")
+    signingConfigs {
+        if (ks != null) create("stable") {
+            storeFile = file(ks)
+            storePassword = System.getenv("PP_KEYSTORE_PASSWORD") ?: "phonepilot"
+            keyAlias = "phonepilot"
+            keyPassword = System.getenv("PP_KEYSTORE_PASSWORD") ?: "phonepilot"
+        }
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Signature : voir docs/INSTALL.md (keystore hors dépôt).
+            signingConfig = if (ks != null) signingConfigs.getByName("stable") else signingConfigs.getByName("debug")
         }
     }
     compileOptions {

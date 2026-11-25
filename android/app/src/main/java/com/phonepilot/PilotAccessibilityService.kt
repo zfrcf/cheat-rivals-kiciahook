@@ -155,6 +155,7 @@ class PilotAccessibilityService : AccessibilityService() {
             "notifications" -> GLOBAL_ACTION_NOTIFICATIONS
             "quick_settings" -> GLOBAL_ACTION_QUICK_SETTINGS
             "lock_screen" -> GLOBAL_ACTION_LOCK_SCREEN
+            "power_dialog" -> GLOBAL_ACTION_POWER_DIALOG
             "collapse" -> GLOBAL_ACTION_BACK
             else -> throw RpcError("BAD_ACTION", "Action globale inconnue : $name")
         }

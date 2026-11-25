@@ -66,11 +66,16 @@ class MainActivity : ComponentActivity() {
         }
         col.addView(stopBtn)
 
-        title("1. Appairage avec le Mac")
-        button("Scanner le QR code du Mac") { scan.launch(ScanOptions().setPrompt("Scanne le QR affiché par « phonepilot-bridge pair »").setBeepEnabled(false).setOrientationLocked(false)) }
-        button("Saisir l'appairage à la main") {
-            val input = EditText(this).apply { hint = "{\"url\":\"ws://100.x.y.z:8765\",\"token\":\"…\"}" }
-            AlertDialog.Builder(this).setTitle("Appairage").setView(input).setPositiveButton("OK") { _, _ -> applyPairing(input.text.toString()) }.show()
+        title("1. Connexion au serveur PhonePilot")
+        button("Saisir l'adresse du serveur (https://…workers.dev)") {
+            val input = EditText(this).apply { hint = "https://phonepilot.ton-compte.workers.dev"; setText(Prefs.bridgeUrl.replace("wss://", "https://").removeSuffix("/phone")) }
+            AlertDialog.Builder(this).setTitle("Adresse du serveur").setView(input).setPositiveButton("OK") { _, _ -> applyPairing(input.text.toString()) }.show()
+        }
+        button("Scanner un QR code (adresse du serveur)") { scan.launch(ScanOptions().setPrompt("Scanne le QR de l'adresse du serveur").setBeepEnabled(false).setOrientationLocked(false)) }
+        button("Révoquer tous les accès Claude") {
+            AlertDialog.Builder(this).setTitle("Révoquer ?").setMessage("Claude devra se reconnecter (et tu devras réapprouver sur le téléphone).")
+                .setPositiveButton("Révoquer") { _, _ -> BridgeService.event("revoke_tokens", JSONObject()); Journal.add("🔒 Accès Claude révoqués") }
+                .setNegativeButton("Annuler", null).show()
         }
 
         title("2. Permissions (à faire une fois)")
@@ -86,6 +91,8 @@ class MainActivity : ComponentActivity() {
         button("Autoriser la capture d'écran") { startActivity(Intent(this, CaptureActivity::class.java)) }
         button("Accès aux notifications") { open(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")) }
         button("Afficher par-dessus les autres applis") { open(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))) }
+        button("Modifier les paramètres système (luminosité, veille, rotation)") { open(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName"))) }
+        button("Accès « Ne pas déranger »") { open(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) }
         button("Accès aux données d'utilisation (temps d'écran)") { open(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
         button("Ignorer l'optimisation de la batterie") { open(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName"))) }
         button("Huawei : Lancement d'applications (gérer manuellement)") {
@@ -95,8 +102,7 @@ class MainActivity : ComponentActivity() {
             )
             if (tries.none { runCatching { startActivity(Intent().setComponent(it)) }.isSuccess }) open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
         }
-        button("Autoriser Shizuku (si Shizuku est démarré)") { ShizukuShell.requestPermission(); refresh() }
-        button("Reconnecter au Mac") { BridgeService.reconnect(this) }
+        button("Reconnecter au serveur") { BridgeService.reconnect(this) }
 
         title("3. Confirmations demandées sur le téléphone")
         for ((key, label) in Prefs.allCategories) col.addView(Switch(this).apply {
@@ -113,15 +119,25 @@ class MainActivity : ComponentActivity() {
 
     private fun open(i: Intent) = runCatching { startActivity(i) }.onFailure { Toast.makeText(this, "Écran introuvable sur ce téléphone", Toast.LENGTH_SHORT).show() }
 
+    /** Accepte « https://hote[#code=XXXX] », « wss://hote/phone » ou l'ancien JSON {url, token}. */
     private fun applyPairing(raw: String) {
         runCatching {
-            val j = JSONObject(raw)
-            val url = j.getString("url"); val token = j.getString("token")
-            require(url.startsWith("ws://") || url.startsWith("wss://"))
-            Prefs.bridgeUrl = url; Prefs.token = token
-            Journal.add("Appairé avec $url")
+            val text = raw.trim()
+            if (text.startsWith("{")) {
+                val j = JSONObject(text)
+                Prefs.bridgeUrl = j.getString("url"); Prefs.token = j.getString("token")
+            } else {
+                val code = text.substringAfter("#code=", "").trim()
+                var base = text.substringBefore("#").trimEnd('/')
+                require(base.startsWith("https://") || base.startsWith("wss://") || base.startsWith("ws://") || base.startsWith("http://"))
+                base = base.replaceFirst("https://", "wss://").replaceFirst("http://", "ws://")
+                Prefs.bridgeUrl = if (base.endsWith("/phone")) base else "$base/phone"
+                if (code.isNotBlank()) Prefs.pairingCode = code
+                Prefs.ensureToken()
+            }
+            Journal.add("Serveur : ${Prefs.bridgeUrl}")
             BridgeService.reconnect(this)
-        }.onFailure { Toast.makeText(this, "QR code invalide", Toast.LENGTH_LONG).show() }
+        }.onFailure { Toast.makeText(this, "Adresse invalide (attendu : https://…)", Toast.LENGTH_LONG).show() }
         refresh()
     }
 
@@ -131,13 +147,13 @@ class MainActivity : ComponentActivity() {
         val svc = BridgeService.instance
         val pmgr = getSystemService(PowerManager::class.java)
         status.text = """
-            ${ok(svc?.connected == true)} Mac : ${if (svc?.connected == true) "connecté" else if (Prefs.bridgeUrl.isBlank()) "non appairé" else "recherche… (${Prefs.bridgeUrl})"}
+            ${ok(svc?.connected == true)} Serveur : ${if (svc?.connected == true) "connecté" else if (Prefs.bridgeUrl.isBlank()) "adresse à saisir" else "recherche… (${Prefs.bridgeUrl})"}
             ${ok(PilotAccessibilityService.instance != null)} Accessibilité
             ${ok(ScreenCapture.ready)} Capture d'écran
             ${ok(PilotNotificationListener.instance != null)} Notifications
             ${ok(Settings.canDrawOverlays(this))} Superposition (ouvrir des applis en arrière-plan)
             ${ok(pmgr.isIgnoringBatteryOptimizations(packageName))} Batterie non optimisée
-            ${ok(ShizukuShell.active)} Shizuku ${if (!ShizukuShell.active) "(relancer depuis le Mac après un redémarrage)" else ""}
+            ${ok(Settings.System.canWrite(this))} Paramètres système (luminosité, veille)
         """.trimIndent()
         stopBtn.text = if (Prefs.stopped) "▶️  REPRENDRE (arrêt d'urgence actif)" else "⛔  STOP — bloquer Claude"
         stopBtn.setBackgroundColor(if (Prefs.stopped) Color.rgb(30, 130, 60) else Color.rgb(200, 30, 30))

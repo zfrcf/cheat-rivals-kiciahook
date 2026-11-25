@@ -3,11 +3,12 @@ package com.phonepilot
 import com.phonepilot.handlers.Comms
 import com.phonepilot.handlers.DeviceH
 import com.phonepilot.handlers.Files
+import com.phonepilot.handlers.NoShell
 import org.json.JSONObject
 
 /** Table des méthodes exposées au bridge. Seules les méthodes réellement utilisables sont annoncées. */
 object Router {
-    private val all: Map<String, Handler> = DeviceH.handlers + Files.handlers + Comms.handlers + mapOf(
+    private val all: Map<String, Handler> = DeviceH.handlers + Files.handlers + Comms.handlers + NoShell.handlers + mapOf(
         "shell.exec" to { p -> ShizukuShell.exec(p.getString("cmd"), p.long("timeoutMs", 30_000)) },
         "notifications.list" to { p -> PilotNotificationListener.require().list(p.str("app")) },
         "notifications.history" to { p -> PilotNotificationListener.require(); PilotNotificationListener.historySince(System.currentTimeMillis() - p.int("hours", 24) * 3_600_000L, p.str("app")) },
@@ -21,7 +22,7 @@ object Router {
     fun methods(): List<String> = all.keys.filter { m ->
         when {
             m in needsA11y -> PilotAccessibilityService.instance != null
-            m == "screen.capture" -> ScreenCapture.ready
+            m == "screen.capture" || m == "screen.record" -> ScreenCapture.ready
             m == "shell.exec" -> ShizukuShell.active
             m.startsWith("notification") -> PilotNotificationListener.instance != null
             else -> true

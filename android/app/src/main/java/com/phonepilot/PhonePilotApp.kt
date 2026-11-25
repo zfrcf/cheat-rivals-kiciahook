@@ -36,7 +36,7 @@ class PhonePilotApp : Application() {
     }
 }
 
-/** Journal local affiché dans l'app (le journal d'audit complet est côté Mac). */
+/** Journal local affiché dans l'app (le journal d'audit complet est côté serveur). */
 object Journal {
     private val lines = ArrayDeque<String>()
     private val fmt = SimpleDateFormat("HH:mm:ss", Locale.FRANCE)
@@ -65,6 +65,19 @@ object Prefs {
     var token: String
         get() = sp.getString("token", null)?.let { decrypt(it) } ?: ""
         set(v) = sp.edit().putString("token", encrypt(v)).apply()
+
+    var pairingCode: String
+        get() = sp.getString("code", "") ?: ""
+        set(v) = sp.edit().putString("code", v).apply()
+
+    /** Jeton généré sur le téléphone (mode cloud : le serveur adopte le premier téléphone qui se présente). */
+    fun ensureToken(): String {
+        if (token.isBlank()) {
+            val b = ByteArray(32).also { java.security.SecureRandom().nextBytes(it) }
+            token = Base64.encodeToString(b, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+        }
+        return token
+    }
 
     var stopped: Boolean
         get() = sp.getBoolean("stopped", false)

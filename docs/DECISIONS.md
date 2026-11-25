@@ -53,3 +53,38 @@ Pas de Camera2 maison (lourd, et l'appli Huawei fait mieux) : intent caméra + d
 
 ### D12 — Mode avion / point d'accès par réglages rapides
 Android 10 interdit au shell de diffuser `AIRPLANE_MODE` et n'a pas de commande `tether` : on bascule la tuile EMUI via l'accessibilité.
+
+---
+## Bascule « jamais branché » (25/11/2026, demande d'Antoine : 4G/Wi-Fi uniquement, connecteur MCP personnalisé, plus de Mac)
+
+### D13 — Serveur MCP sur Cloudflare Workers + Durable Object
+Remplace D2/D8. Gratuit (offre Free : DO SQLite, 30 s CPU par requête, 100 000 requêtes/jour), HTTPS fourni, toujours allumé, rien à maintenir.
+Un seul Durable Object tient le WebSocket du téléphone (API d'hibernation : coût nul au repos), le serveur MCP (transport Streamable HTTP « web standard »),
+l'OAuth, l'audit (30 j), les planifications (alarmes du DO) et les liens de téléchargement.
+Le cœur `bridge/src` est partagé : les outils ne dépendent plus du Mac (interface `Platform` : `deliver`, `source`, `oneShot`).
+*Alternative écartée* : téléphone serveur (EMUI tue les services, Android 10 non patché exposé, pas de Funnel Tailscale sur Android). VPS : payant et à maintenir.
+
+### D14 — OAuth 2.1 maison, approuvé sur le téléphone
+DCR + code + PKCE S256 + rafraîchissement avec rotation ; seuls des hachés SHA-256 sont stockés. Pas de mot de passe :
+la page /authorize déclenche une notification **Oui/Non sur le P30** (catégorie `connexion_claude`, non désactivable).
+Révocation totale depuis l'app. *Pourquoi pas la librairie Cloudflare* : elle impose un namespace KV à provisionner ; tout tient ici dans le DO.
+
+### D15 — Appairage « premier arrivé » (TOFU) + code optionnel
+L'app génère son propre jeton (Keystore) ; le serveur adopte le premier téléphone puis refuse les autres. Risque résiduel : quelqu'un qui connaîtrait l'URL
+avant ton premier lancement — d'où « appaire juste après le déploiement ». Pour réappairer : secret `PAIRING_CODE`.
+Même un intrus appairé ne pourrait rien faire de TON téléphone (il n'est pas connecté à lui) et l'OAuth passerait par SON appareil.
+
+### D16 — Plus de Shizuku ni d'ADB (Android 10 sans câble)
+Shizuku sans root exige le débogage sans fil (Android 11+) ou un ordinateur à chaque démarrage → **impossible** en « jamais branché ». Remplacements natifs :
+luminosité / veille / rotation (`WRITE_SETTINGS`), Ne pas déranger (`setInterruptionFilter`), Bluetooth (`BluetoothAdapter`), enregistrement d'écran (MediaProjection),
+PDF (`PdfRenderer` → images), redémarrage (menu d'alimentation par accessibilité), arrêt forcé / désinstallation (écrans système + accessibilité),
+Wi-Fi / données / avion / point d'accès / mode sombre (tuiles des réglages rapides).
+**Perdus** : saisie de touches brutes (Entrée, volume physique) → on touche le bouton d'envoi ; installation silencieuse (Antoine valide l'installeur) ; vidage global des caches.
+
+### D17 — Fichiers : liens temporaires en flux direct
+`file_pull` renvoie un lien HTTPS secret valable 24 h ; le fichier est lu **en direct sur le téléphone** au moment du téléchargement (rien n'est stocké chez Cloudflare).
+Plusieurs fichiers → zip sur le téléphone puis un lien. Envoi vers le téléphone : depuis une URL https.
+
+### D18 — APK servie par le serveur, signée par une clé stable
+Le workflow GitHub compile l'APK, la signe avec `ANDROID_KEYSTORE_B64` (secret GitHub, jamais dans le dépôt — **le dépôt est public**) et la publie à `/PhonePilot.apk`.
+Clé stable = mises à jour sans désinstaller (donc sans perdre les permissions).

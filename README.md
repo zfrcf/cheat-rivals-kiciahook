@@ -4,35 +4,23 @@ Donner à Claude le contrôle complet d'un **Huawei P30 (Android 10, EMUI, non r
 accéder aux fichiers, SMS, contacts, agenda, notifications… depuis Claude Code sur le Mac **et** à distance (4G).
 
 ```
-[Claude Code (Mac) ← Remote Control ← app Claude mobile]
-        │ MCP stdio (local)
+[app Claude / claude.ai]  — connecteur MCP personnalisé (HTTPS + OAuth approuvé sur le téléphone)
+        │
         ▼
-[bridge/ — Node/TypeScript sur le Mac]  ── ADB (câble / Wi-Fi) ──┐
-        ▲ WebSocket via Tailscale, jeton d'appairage             │
-        │ (connexion SORTANTE du téléphone, aucun port ouvert)   ▼
-[android/ — app PhonePilot : accessibilité, capture, notifications, Shizuku, fichiers, SMS…]
+[cloud/ — serveur PhonePilot sur Cloudflare Workers (gratuit, toujours allumé)]
+        ▲  WebSocket sécurisé, connexion SORTANTE du téléphone (4G / Wi-Fi), rien d'ouvert sur le P30
+        │
+[android/ — app PhonePilot : accessibilité, capture, notifications, fichiers, SMS, contacts, agenda…]
 ```
-
-## Démarrage rapide
-1. `scripts/mac/installer.sh` — outils, bridge, tests, démon Shizuku, ajout du MCP à Claude Code.
-2. `scripts/mac/installer-apk.sh` — installe l'app sur le téléphone branché.
-3. Permissions dans l'app + appairage QR (`node bridge/dist/index.js pair`).
-Guide détaillé avec les chemins EMUI : **[docs/INSTALL.md](docs/INSTALL.md)**.
+**Jamais branché, aucun Mac** : tout s'installe depuis le téléphone → **[docs/INSTALL.md](docs/INSTALL.md)**.
 
 ## Ce qui est livré
-- **~90 outils MCP** couvrant les 100 capacités → [docs/CAPACITES.md](docs/CAPACITES.md)
-- **Routeur à 3 chemins** : app compagnon (sans câble) › Shizuku › ADB, repli automatique.
-- **Sécurité** : STOP (notification + app, reprise uniquement par toi), confirmations Oui/Non sur le téléphone, journal d'audit avec captures avant/après, anti-injection, liste noire shell, jetons hors Git.
-- **Automatisation** : macros, tâches planifiées, déclencheurs, surveillance de valeur, sauvegarde et rapport quotidiens.
-- Tests : `cd bridge && npm test` (téléphone simulé). CI GitHub : tests + APK téléchargeable.
+- **102 outils MCP** couvrant les 100 capacités → [docs/CAPACITES.md](docs/CAPACITES.md)
+- **Serveur cloud** (`cloud/`) : MCP Streamable HTTP, OAuth 2.1 (DCR + PKCE) dont chaque autorisation est approuvée **sur le téléphone**, liens de téléchargement temporaires, planifications, audit 30 jours.
+- **Sécurité** : STOP (notification + app, reprise uniquement par toi), confirmations Oui/Non pour les actions sensibles, anti-injection, révocation des accès Claude depuis l'app, aucun secret dans le dépôt.
+- **Automatisation** : macros, tâches planifiées, déclencheurs, surveillance de valeur, rapport quotidien.
+- **Déploiement automatique** : GitHub Actions compile l'APK signée et déploie serveur + APK (`.github/workflows/deploy.yml`).
+- Tests : `cd bridge && npm test` (20) · `cd cloud && npm run e2e` (20, bout en bout avec téléphone simulé).
 
 ## Documentation
-[INSTALL](docs/INSTALL.md) · [DECISIONS](docs/DECISIONS.md) · [CAPACITES](docs/CAPACITES.md) · [EVALUATION de l'existant](docs/EVALUATION.md) · [PROTOCOLE](docs/PROTOCOLE.md) · [PROGRESS](PROGRESS.md)
-
-## Commandes du bridge
-```
-node bridge/dist/index.js stdio          # serveur MCP (lancé par Claude Code)
-node bridge/dist/index.js pair [--rotate]# QR d'appairage (--rotate = révoque l'ancien)
-node bridge/dist/index.js adb-wifi       # passe ADB en Wi-Fi
-node bridge/dist/index.js http           # MCP HTTP + Bearer (option, voir DECISIONS D8)
-```
+[INSTALL](docs/INSTALL.md) · [INSTALL-MAC (ancien mode câblé)](docs/INSTALL-MAC.md) · [DECISIONS](docs/DECISIONS.md) · [CAPACITES](docs/CAPACITES.md) · [EVALUATION de l'existant](docs/EVALUATION.md) · [PROTOCOLE](docs/PROTOCOLE.md) · [PROGRESS](PROGRESS.md)

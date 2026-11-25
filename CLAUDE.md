@@ -4,9 +4,10 @@ Projet : donner à Claude le contrôle complet du **Huawei P30 d'Antoine (Androi
 Tout ce qu'Antoine voit (interface, notifications, docs, commits) est **en français**. Descriptions d'outils MCP en anglais.
 
 ## Structure
-- `bridge/` — serveur MCP Node/TypeScript (stdio local, HTTP optionnel). `npm test` = tests avec téléphone simulé.
+- `cloud/` — **mode principal** : serveur MCP distant sur Cloudflare Workers (Durable Object, OAuth approuvé sur le téléphone). `npm run e2e`.
+- `bridge/` — cœur partagé (outils, sécurité, routeur) + ancien mode Mac (stdio/ADB). `npm test` = tests avec téléphone simulé.
 - `android/` — app compagnon Kotlin (minSdk/targetSdk 29). `./gradlew assembleDebug`.
-- `scripts/mac/` — installation, relance auto de Shizuku (launchd), ADB Wi-Fi.
+- `scripts/mac/` — ancien mode câblé uniquement (facultatif).
 - `docs/` — INSTALL (chemins EMUI), DECISIONS, CAPACITES (100 capacités), EVALUATION, PROTOCOLE.
 - `PROGRESS.md` — état d'avancement à mettre à jour à chaque étape (fait / en cours / bloqué).
 
@@ -23,5 +24,7 @@ Tout ce qu'Antoine voit (interface, notifications, docs, commits) est **en fran�
 
 ## Méthode
 - Petits commits en français. `docs/DECISIONS.md` pour chaque choix technique.
+- Antoine ne branche jamais le téléphone : pas de Shizuku/ADB en production ; toute fonction doit avoir un chemin natif (app) ou par accessibilité.
+- Le dépôt est **public** : aucun secret, aucune URL de serveur, aucune donnée perso dans Git.
 - Toute nouvelle méthode du protocole : l'ajouter côté app (`Router.kt`) **et** l'utiliser côté bridge ; si elle peut tourner en shell, l'ajouter à `shellimpl.ts`.
 - Aucun secret dans Git (`~/.phonepilot/config.json`, Keystore Android).
