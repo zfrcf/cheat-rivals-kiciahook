@@ -24,7 +24,6 @@ jobs:
           fi
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
-      - uses: android-actions/setup-android@v3
       - name: Compiler l'APK signée
         env:
           KS: ${{ secrets.ANDROID_KEYSTORE_B64 }}
@@ -41,4 +40,10 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: cd cloud && npm ci && npx wrangler deploy | tee deploy.log && grep -o 'https://[^ ]*workers.dev' deploy.log | head -1 | sed 's/^/::notice::Adresse du serveur : /'
+        run: |
+          cd cloud && npm ci
+          npx wrangler deploy | tee deploy.log
+          URL=$(grep -o 'https://[^ ]*workers.dev' deploy.log | head -1)
+          echo "::notice::Adresse du serveur : $URL"
+          echo "### Serveur PhonePilot : $URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "Connecteur MCP : $URL/mcp — App : $URL/PhonePilot.apk" >> "$GITHUB_STEP_SUMMARY"
