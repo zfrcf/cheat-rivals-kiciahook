@@ -1,0 +1,36 @@
+{
+  "name": "phonepilot-bridge",
+  "version": "0.1.0",
+  "description": "Bridge MCP PhonePilot : pilote un Android 10 (Huawei P30) depuis Claude",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p .",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "pair": "node dist/index.js pair",
+    "dev": "tsc -p . && node dist/index.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "croner": "^11.0.1",
+    "qrcode-terminal": "^0.12.0",
+    "ws": "^8.23.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.10",
+    "@types/qrcode-terminal": "^0.12.2",
+    "@types/ws": "^8.18.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.2"
+  },
+  "type": "module",
+  "bin": {
+    "phonepilot-bridge": "dist/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true
+}
