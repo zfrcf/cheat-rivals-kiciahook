@@ -188,7 +188,9 @@ export const SHELL_IMPL: Record<string, Impl> = {
   "media.key": async (sh, p) => SHELL_IMPL["input.key"](sh, { key: p.action }),
   "volume.set": async (sh, p) => {
     const s = STREAMS[p.stream] ?? 3;
-    await sh.exec(`media volume --stream ${s} --set ${p.level | 0}`);
+    const max = s === 3 ? 15 : 7;
+    const level = typeof p.percent === "number" ? Math.round((p.percent / 100) * max) : p.level | 0;
+    await sh.exec(`media volume --stream ${s} --set ${level}`);
     return { ok: true };
   },
   "volume.get": async (sh, p) => {
