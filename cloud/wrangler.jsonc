@@ -8,7 +8,6 @@
     "bindings": [{ "name": "PHONE", "class_name": "PhoneHubDO" }]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PhoneHubDO"] }],
-  "limits": { "cpu_ms": 30000 },
   // L'APK de l'app est servie par le même déploiement : https://<serveur>/PhonePilot.apk
   "assets": { "directory": "./public" },
   "observability": { "enabled": true }

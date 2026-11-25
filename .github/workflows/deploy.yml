@@ -41,9 +41,11 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
+          set -o pipefail
           cd cloud && npm ci
-          npx wrangler deploy | tee deploy.log
+          npx wrangler deploy 2>&1 | tee deploy.log
           URL=$(grep -o 'https://[^ ]*workers.dev' deploy.log | head -1)
+          [ -n "$URL" ] || { echo "::error::Adresse du serveur introuvable dans la sortie de wrangler"; exit 1; }
           echo "::notice::Adresse du serveur : $URL"
           echo "### Serveur PhonePilot : $URL" >> "$GITHUB_STEP_SUMMARY"
           echo "Connecteur MCP : $URL/mcp — App : $URL/PhonePilot.apk" >> "$GITHUB_STEP_SUMMARY"
