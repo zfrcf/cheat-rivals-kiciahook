@@ -56,14 +56,14 @@ export function metadata(origin: string) {
   };
 }
 
-export function protectedResource(origin: string) {
-  return { resource: `${origin}/mcp`, authorization_servers: [origin], scopes_supported: ["phone"], bearer_methods_supported: ["header"] };
+export function protectedResource(origin: string, path = "/mcp") {
+  return { resource: `${origin}${path}`, authorization_servers: [origin], scopes_supported: ["phone"], bearer_methods_supported: ["header"], resource_name: "PhonePilot" };
 }
 
 export const unauthorized = (origin: string) =>
   new Response(JSON.stringify({ error: "invalid_token" }), {
     status: 401,
-    headers: { "content-type": "application/json", "www-authenticate": `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource"` },
+    headers: { "content-type": "application/json", "www-authenticate": `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource/mcp"`, "access-control-allow-origin": "*", "access-control-expose-headers": "www-authenticate" },
   });
 
 const validRedirect = (u: string) => {
@@ -85,8 +85,11 @@ export class OAuth {
     const clients = await this.kv.list({ prefix: "client:" });
     if (clients.size > 50) return oauthError("access_denied", "Trop de clients enregistrés : révoque depuis l'app.", 429);
     const client: Client = { client_id: rand(16), client_name: String(body.client_name ?? "Client MCP").slice(0, 80), redirect_uris: uris, created: new Date().toISOString() };
+    // Client confidentiel demandé : on fournit un secret (non vérifié ; la sécurité repose sur PKCE + approbation sur le téléphone).
+    const confidential = body.token_endpoint_auth_method && body.token_endpoint_auth_method !== "none";
+    const extra = confidential ? { client_secret: rand(24), client_secret_expires_at: 0 } : {};
     await this.kv.put(`client:${client.client_id}`, client);
-    return json({ ...client, token_endpoint_auth_method: "none", grant_types: ["authorization_code", "refresh_token"], response_types: ["code"] }, 201);
+    return json({ ...client, ...extra, client_id_issued_at: Math.floor(Date.now() / 1000), token_endpoint_auth_method: confidential ? body.token_endpoint_auth_method : "none", grant_types: ["authorization_code", "refresh_token"], response_types: ["code"], scope: "phone" }, 201);
   }
 
   /** Vérifie une demande d'autorisation ; renvoie le client ou un message d'erreur lisible. */

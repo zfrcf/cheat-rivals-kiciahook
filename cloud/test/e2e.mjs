@@ -61,7 +61,9 @@ try {
 
   assert.match(await (await fetch(O + "/")).text(), /Téléphone connecté/); ok("page d'état");
   const r401 = await fetch(O + "/mcp", { method: "POST" });
-  assert.equal(r401.status, 401); assert.match(r401.headers.get("www-authenticate"), /resource_metadata/); ok("MCP sans jeton → 401 + métadonnées");
+  assert.equal(r401.status, 401); assert.match(r401.headers.get("www-authenticate"), /resource_metadata=".*oauth-protected-resource\/mcp"/);
+  const rootPost = await fetch(O + "/", { method: "POST" });
+  assert.equal(rootPost.status, 401); ok("adresse racine acceptée comme connecteur"); ok("MCP sans jeton → 401 + métadonnées");
   const meta = await (await fetch(O + "/.well-known/oauth-authorization-server")).json();
   assert.equal(meta.token_endpoint, `${O}/token`); ok("métadonnées OAuth");
 

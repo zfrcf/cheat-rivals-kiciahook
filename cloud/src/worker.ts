@@ -143,12 +143,18 @@ export class PhoneHubDO extends DurableObject<Env> {
       await this.ctx.storage.put("origin", this.origin);
     }
     if (!this.origin) this.origin = url.origin;
-    const path = url.pathname;
+    // Tolérance : « /mcp/ », « /sse » ou l'adresse racine utilisée comme URL de connecteur.
+    let path = url.pathname.replace(/\/+$/, "") || "/";
+    const wantsMcp = req.method === "POST" || (req.headers.get("accept") ?? "").includes("text/event-stream");
+    if (path === "/sse" || (path === "/" && wantsMcp)) path = "/mcp";
     if (req.method === "OPTIONS") return cors();
 
     if (path === "/phone") return this.acceptPhone(req);
-    if (path.startsWith("/.well-known/oauth-authorization-server")) return Response.json(metadata(url.origin));
-    if (path.startsWith("/.well-known/oauth-protected-resource")) return Response.json(protectedResource(url.origin));
+    if (path.startsWith("/.well-known/oauth-authorization-server") || path.startsWith("/.well-known/openid-configuration")) return Response.json(metadata(url.origin), { headers: { "access-control-allow-origin": "*" } });
+    if (path.startsWith("/.well-known/oauth-protected-resource")) {
+      const suffix = path.slice("/.well-known/oauth-protected-resource".length);
+      return Response.json(protectedResource(url.origin, suffix === "" || suffix === "/mcp" ? "/mcp" : suffix), { headers: { "access-control-allow-origin": "*" } });
+    }
     if (path === "/register" && req.method === "POST") return this.oauth.register(req);
     if (path === "/token" && req.method === "POST") return this.oauth.token(req);
     if (path === "/revoke" && req.method === "POST") return this.oauth.revoke(req);
