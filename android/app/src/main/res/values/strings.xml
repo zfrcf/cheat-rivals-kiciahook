@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PhonePilot</string>
+    <string name="a11y_label">PhonePilot — pilotage par Claude</string>
+    <string name="a11y_desc">Permet à Claude (via ton Mac) de lire l\'écran et d\'effectuer des actions à ta demande. Tout est journalisé ; bouton STOP dans la notification.</string>
+    <string name="channel_status">État de PhonePilot</string>
+    <string name="channel_confirm">Confirmations</string>
+    <string name="channel_alerts">Alertes et rapports</string>
+    <string name="notif_active">PhonePilot actif</string>
+    <string name="stop">STOP</string>
+    <string name="resume">Reprendre</string>
+    <string name="yes">Oui</string>
+    <string name="no">Non</string>
+</resources>
