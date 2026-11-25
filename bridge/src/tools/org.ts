@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { saveDocument } from "./transfer.js";
 import { tool, type ToolDef } from "./types.js";
 
 export const orgTools: ToolDef[] = [
@@ -28,14 +27,11 @@ export const orgTools: ToolDef[] = [
   tool({
     name: "contacts_export",
     kind: "act",
-    description: "Export all contacts as a vCard (.vcf) file on the Mac.",
+    description: "Export all contacts as a vCard (.vcf) file and return a download link.",
     schema: {},
     run: async (_a, ctx) => {
       const r = await ctx.device.call("contacts.export_vcf", {}, 120000);
-      mkdirSync(ctx.cfg.inboxDir, { recursive: true });
-      const p = join(ctx.cfg.inboxDir, `contacts_${new Date().toISOString().slice(0, 10)}.vcf`);
-      writeFileSync(p, r.vcf);
-      return { json: { ok: true, path: p, count: r.count } };
+      return { json: { ok: true, count: r.count, ...(await saveDocument(ctx, `contacts_${new Date().toISOString().slice(0, 10)}.vcf`, r.vcf)) } };
     },
   }),
   tool({

@@ -1,7 +1,7 @@
 import type { z } from "zod";
 import type { Config } from "../config.js";
 import type { Device } from "../phone/device.js";
-import type { AuditLog } from "../security/audit.js";
+import type { AuditEntry } from "../security/audit.js";
 import type { Guard } from "../security/guard.js";
 
 export interface Out {
@@ -12,10 +12,38 @@ export interface Out {
   untrusted?: string;
 }
 
+/** Où vit le bridge : sur le Mac (fichiers locaux, ADB) ou dans le cloud (liens de téléchargement). */
+export interface Delivered {
+  path: string;
+  bytes?: number;
+  local?: string;
+  link?: string;
+  expires?: string;
+}
+
+export interface Platform {
+  kind: "mac" | "cloud";
+  /** Met un fichier du téléphone à disposition d'Antoine : copie sur le Mac, ou lien HTTPS temporaire. */
+  deliver(ctx: Ctx, remotePath: string, dir?: string): Promise<Delivered>;
+  /** Récupère un fichier source (URL https, ou chemin local sur le Mac). */
+  source(src: string): Promise<{ name: string; data: Uint8Array }>;
+  pdfToText?(data: Uint8Array): Promise<string | undefined>;
+  readBytes?(ctx: Ctx, remote: string, max: number): Promise<Uint8Array>;
+  /** Programme une action unique (ex. fin du Ne pas déranger). */
+  oneShot(at: Date, tool: string, args: any): void;
+}
+
+export interface AuditSink {
+  write(e: Omit<AuditEntry, "ts">): void;
+  tail(n?: number, filter?: string): Promise<AuditEntry[]> | AuditEntry[];
+  saveImage(name: string, base64: string): Promise<string | undefined> | string | undefined;
+}
+
 export interface Ctx {
   device: Device;
   cfg: Config;
-  audit: AuditLog;
+  audit: AuditSink;
+  platform: Platform;
   guard: Guard;
   who: string;
   /** Exécute un autre outil en passant par tous les garde-fous (utilisé par macros/planifs). */

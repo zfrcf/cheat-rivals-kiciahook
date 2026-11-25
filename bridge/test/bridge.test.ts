@@ -12,7 +12,8 @@ process.env.PHONEPILOT_WS_PORT = "0";
 process.env.ADB = "/inexistant/adb";
 
 const { loadConfig } = await import("../src/config.js");
-const { Runtime, toMcpContent } = await import("../src/runtime.js");
+const { toMcpContent } = await import("../src/runtime.js");
+const { createNodeRuntime } = await import("../src/platform/node.js");
 const { buildServer } = await import("../src/server.js");
 const { parseUiautomatorXml, enrich, renderTree, findNode, fieldNear } = await import("../src/phone/uitree.js");
 const { wrapUntrusted, detectInjection } = await import("../src/security/untrusted.js");
@@ -77,16 +78,17 @@ describe("sécurité", () => {
 });
 
 describe("bout en bout avec téléphone simulé", () => {
-  let rt: InstanceType<typeof Runtime>;
+  let rt: ReturnType<typeof createNodeRuntime>["rt"];
+  let hub: ReturnType<typeof createNodeRuntime>["hub"];
   let phone: FakePhone;
   let url: string;
   let client: Client;
 
   beforeAll(async () => {
     const cfg = loadConfig();
-    rt = new Runtime(cfg);
-    await rt.hub.listen("127.0.0.1", 0);
-    url = `ws://127.0.0.1:${rt.hub.port}`;
+    ({ rt, hub } = createNodeRuntime(cfg));
+    await hub.listen("127.0.0.1", 0);
+    url = `ws://127.0.0.1:${hub.port}`;
     phone = new FakePhone(url, cfg.pairingToken, [
       "ui.dump", "ui.action", "confirm.request", "screen.capture", "sms.send", "contacts.search", "device.state", "notify", "health", "stop.notify",
     ]);
@@ -102,7 +104,7 @@ describe("bout en bout avec téléphone simulé", () => {
   });
   afterAll(() => {
     phone.close();
-    rt.hub.close();
+    hub.close();
   });
 
   it("refuse un jeton invalide", async () => {

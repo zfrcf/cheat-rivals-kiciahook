@@ -1,0 +1,13 @@
+{
+  // PhonePilot — mode cloud (aucun Mac requis).
+  "name": "phonepilot",
+  "main": "src/worker.ts",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [{ "name": "PHONE", "class_name": "PhoneHubDO" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PhoneHubDO"] }],
+  "limits": { "cpu_ms": 30000 },
+  "observability": { "enabled": true }
+}

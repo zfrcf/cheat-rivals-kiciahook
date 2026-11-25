@@ -36,3 +36,6 @@ export function buildServer(rt: Runtime): McpServer {
   }
   return server;
 }
+
+/** Réexport pour le mode cloud (une seule copie du SDK dans le bundle). */
+export { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";

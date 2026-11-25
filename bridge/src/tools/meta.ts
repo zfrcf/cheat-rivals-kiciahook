@@ -27,7 +27,7 @@ export const metaTools: ToolDef[] = [
     kind: "meta",
     description: "Read the latest audit log entries (who, what, when, result, before/after screenshots paths).",
     schema: { n: z.number().default(30), filter: z.string().optional() },
-    run: async (a, ctx) => ({ json: ctx.audit.tail(a.n, a.filter) }),
+    run: async (a, ctx) => ({ json: await ctx.audit.tail(a.n, a.filter) }),
   }),
   tool({
     name: "emergency_stop",

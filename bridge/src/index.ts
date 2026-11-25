@@ -5,17 +5,17 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import qrcode from "qrcode-terminal";
 import { configPath, loadConfig, rotatePairingToken } from "./config.js";
-import { Runtime } from "./runtime.js";
+import { createNodeRuntime } from "./platform/node.js";
 import { buildServer } from "./server.js";
-import { AdbShell } from "./phone/shell.js";
+import { AdbShell } from "./phone/adb.js";
 
 // En mode stdio, stdout est réservé au protocole MCP : tous les journaux vont sur stderr.
 const log = (...a: unknown[]) => console.error("[phonepilot]", ...a);
 
 async function startRuntime() {
   const cfg = loadConfig();
-  const rt = new Runtime(cfg);
-  await rt.hub.listen(cfg.wsHost, cfg.wsPort);
+  const { rt, hub } = createNodeRuntime(cfg);
+  await hub.listen(cfg.wsHost, cfg.wsPort);
   log(`WebSocket téléphone en écoute sur ws://${cfg.wsHost}:${cfg.wsPort}`);
   rt.hub.on("connected", (d) => log("Téléphone connecté :", JSON.stringify(d)));
   rt.hub.on("disconnected", () => log("Téléphone déconnecté"));

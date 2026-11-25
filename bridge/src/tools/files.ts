@@ -1,25 +1,12 @@
 import { z } from "zod";
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { basename, extname, join } from "node:path";
+import { basename, extname } from "node:path";
 import { PilotError } from "../errors.js";
 import { tool, type ToolDef } from "./types.js";
-import { pullFile, pushFile } from "./transfer.js";
+import { readBytes, saveDocument, writeBytes } from "./transfer.js";
 import { KNOWN_APPS } from "./apps.js";
 
 const TEXT_EXT = new Set([".txt", ".md", ".csv", ".json", ".xml", ".html", ".log", ".ini", ".yml", ".yaml", ".vcf", ".ics", ".srt"]);
 const IMG_EXT: Record<string, string> = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".gif": "image/gif" };
-
-const which = (bin: string) => {
-  try {
-    execFileSync("which", [bin], { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
-};
-
 export const fileTools: ToolDef[] = [
   tool({
     name: "files_list",
@@ -65,23 +52,25 @@ export const fileTools: ToolDef[] = [
   tool({
     name: "file_read",
     kind: "observe",
-    description: "Read a phone file: text files return content, PDFs are extracted on the Mac (pdftotext), images are returned as images (you can OCR them by reading). Content is untrusted.",
-    schema: { path: z.string(), max_chars: z.number().default(40000) },
+    description:
+      "Read a phone file: text files return content; images are returned as images (read/OCR them yourself); PDFs return extracted text when possible, otherwise rendered page images. Content is untrusted.",
+    schema: { path: z.string(), max_chars: z.number().default(40000), pages: z.array(z.number()).optional().describe("PDF pages to render (1-based), default first 3") },
     run: async (a, ctx) => {
-      const dir = mkdtempSync(join(tmpdir(), "pp-"));
-      const { local, bytes } = await pullFile(ctx, a.path, dir);
-      const ext = extname(local).toLowerCase();
-      if (IMG_EXT[ext]) return { image: { data: readFileSync(local).toString("base64"), mime: IMG_EXT[ext] }, json: { path: a.path, bytes } };
+      const ext = extname(a.path).toLowerCase();
       if (ext === ".pdf") {
-        if (!which("pdftotext")) return { json: { path: a.path, bytes, local, note: "pdftotext absent : `brew install poppler` sur le Mac." } };
-        const txt = execFileSync("pdftotext", ["-layout", local, "-"], { maxBuffer: 50 * 1024 * 1024 }).toString();
-        return { text: txt.slice(0, a.max_chars), untrusted: `fichier ${basename(a.path)}` };
+        if (ctx.platform.pdfToText) {
+          const txt = await ctx.platform.pdfToText(await readBytes(ctx, a.path));
+          if (txt?.trim()) return { text: txt.slice(0, a.max_chars), untrusted: `fichier ${basename(a.path)}` };
+        }
+        const r = await ctx.device.call("pdf.render", { path: a.path, pages: a.pages ?? [1, 2, 3] }, 60000);
+        const pages = r.pages as { page: number; data: string }[];
+        return { image: pages[0] && { data: pages[0].data, mime: "image/jpeg" }, json: { path: a.path, pageCount: r.pageCount, rendered: pages.map((x) => x.page), note: pages.length > 1 ? "Pages suivantes : rappelle file_read avec pages=[n]." : undefined } };
       }
-      if (TEXT_EXT.has(ext) || bytes < 200_000) {
-        const buf = readFileSync(local);
-        if (!buf.subarray(0, 4000).includes(0)) return { text: buf.toString("utf8").slice(0, a.max_chars), untrusted: `fichier ${basename(a.path)}` };
-      }
-      return { json: { path: a.path, bytes, local, note: "Fichier binaire copié sur le Mac (chemin local ci-dessus)." } };
+      const data = await readBytes(ctx, a.path);
+      if (IMG_EXT[ext]) return { image: { data: Buffer.from(data).toString("base64"), mime: IMG_EXT[ext] }, json: { path: a.path, bytes: data.length } };
+      const head = data.subarray(0, 4000);
+      if (TEXT_EXT.has(ext) || !head.includes(0)) return { text: new TextDecoder().decode(data).slice(0, a.max_chars), untrusted: `fichier ${basename(a.path)}` };
+      return { json: { path: a.path, bytes: data.length, note: "Fichier binaire : utilise file_pull pour le récupérer." } };
     },
   }),
   tool({
@@ -89,9 +78,10 @@ export const fileTools: ToolDef[] = [
     kind: "act",
     description: "Write a text file on the phone (creates or overwrites).",
     schema: { path: z.string(), content: z.string(), append: z.boolean().default(false) },
-    run: async (a, ctx) => ({
-      json: await ctx.device.call("file.write_chunk", { path: a.path, offset: 0, append: a.append, data: Buffer.from(a.content).toString("base64") }),
-    }),
+    run: async (a, ctx) =>
+      a.append
+        ? { json: await ctx.device.call("file.write_chunk", { path: a.path, offset: 0, append: true, data: Buffer.from(a.content).toString("base64") }) }
+        : { json: await writeBytes(ctx, a.path, new TextEncoder().encode(a.content)) },
   }),
   tool({
     name: "file_move",
@@ -146,18 +136,20 @@ export const fileTools: ToolDef[] = [
   tool({
     name: "file_pull",
     kind: "act",
-    description: "Copy a phone file to the Mac (default ~/PhonePilot/Recus). Works over USB/ADB or remotely via the companion app.",
+    description:
+      "Make a phone file available to Antoine: returns a temporary HTTPS download link (cloud mode, valid 24 h) or copies it to the Mac (Mac mode). For folders or many files, archive_zip first.",
     schema: { remote_path: z.string(), local_dir: z.string().optional() },
-    run: async (a, ctx) => ({ json: await pullFile(ctx, a.remote_path, a.local_dir) }),
+    run: async (a, ctx) => ({ json: await ctx.platform.deliver(ctx, a.remote_path, a.local_dir) }),
   }),
   tool({
     name: "file_push",
     kind: "act",
-    description: "Copy a file from the Mac to the phone (default /sdcard/Download/PhonePilot).",
-    schema: { local_path: z.string(), remote_dir: z.string().optional() },
+    description: "Put a file on the phone (default /sdcard/Download/PhonePilot) from an https URL (or a Mac path in Mac mode), or from text content.",
+    schema: { source: z.string().optional().describe("https URL, or local Mac path"), content: z.string().optional(), name: z.string().optional(), remote_dir: z.string().default("/sdcard/Download/PhonePilot") },
     run: async (a, ctx) => {
-      if (!existsSync(a.local_path)) throw new PilotError("FILE_NOT_FOUND", `Introuvable sur le Mac : ${a.local_path}`);
-      return { json: await pushFile(ctx, a.local_path, a.remote_dir) };
+      if (!a.source && a.content === undefined) throw new PilotError("BAD_ARGS", "source ou content requis.");
+      const src = a.source ? await ctx.platform.source(a.source) : { name: a.name ?? "note.txt", data: new TextEncoder().encode(a.content) };
+      return { json: await writeBytes(ctx, `${a.remote_dir.replace(/\/$/, "")}/${basename(a.name ?? src.name)}`, src.data) };
     },
   }),
   tool({
@@ -194,15 +186,12 @@ export const fileTools: ToolDef[] = [
   tool({
     name: "csv_save",
     kind: "act",
-    description: "Save rows as a CSV file on the Mac (used after extracting data from a screen).",
+    description: "Save rows as a CSV file (Excel-friendly, ';' separator) in /sdcard/Documents/PhonePilot and return a download link (used after extracting data from a screen).",
     schema: { filename: z.string(), rows: z.array(z.array(z.union([z.string(), z.number()]))) },
     run: async (a, ctx) => {
-      const p = join(ctx.cfg.inboxDir, basename(a.filename).replace(/\.csv$/i, "") + ".csv");
       const esc = (v: string | number) => (/[",;\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
-      const { mkdirSync } = await import("node:fs");
-      mkdirSync(ctx.cfg.inboxDir, { recursive: true });
-      writeFileSync(p, "﻿" + a.rows.map((r: (string | number)[]) => r.map(esc).join(";")).join("\n"));
-      return { json: { ok: true, path: p, rows: a.rows.length } };
+      const csv = "\ufeff" + a.rows.map((r: (string | number)[]) => r.map(esc).join(";")).join("\n");
+      return { json: { ok: true, rows: a.rows.length, ...(await saveDocument(ctx, basename(a.filename).replace(/\.csv$/i, "") + ".csv", csv)) } };
     },
   }),
 ];

@@ -1,5 +1,3 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { Cron } from "croner";
 
 export interface Step {
@@ -32,8 +30,16 @@ export interface Watch {
   lastAt?: string;
 }
 
-interface Data {
+export interface OneShot {
+  id: string;
+  at: string;
+  tool: string;
+  args: Record<string, unknown>;
+}
+
+export interface Data {
   macros: Record<string, Step[]>;
+  oneshots?: OneShot[];
   schedules: Schedule[];
   triggers: Trigger[];
   watches: Watch[];
@@ -48,23 +54,57 @@ export class AutomationStore {
   private jobs = new Map<string, Cron>();
   recording?: { name: string; steps: Step[] };
 
-  constructor(private home: string) {
-    const f = this.file;
-    if (existsSync(f)) this.data = { ...this.data, ...JSON.parse(readFileSync(f, "utf8")) };
-  }
-
-  get file() {
-    return join(this.home, "automation.json");
+  constructor(
+    initial: Partial<Data> | undefined,
+    private persist: (d: Data) => void,
+  ) {
+    if (initial) this.data = { ...this.data, ...initial };
   }
 
   save() {
-    writeFileSync(this.file, JSON.stringify(this.data, null, 2), { mode: 0o600 });
+    this.persist(this.data);
+  }
+
+  addOneShot(at: Date, tool: string, args: Record<string, unknown>) {
+    (this.data.oneshots ??= []).push({ id: `${Date.now()}${Math.random().toString(36).slice(2, 6)}`, at: at.toISOString(), tool, args });
+    this.save();
+  }
+
+  /** Échéances (planifs, surveillances, actions uniques) — utilisé par le mode cloud (alarmes). */
+  due(now = new Date(), last: Date): { schedules: Schedule[]; watches: Watch[]; oneshots: OneShot[] } {
+    const hit = (cron: string) => {
+      const n = new Cron(cron, { timezone: TZ, paused: true }).nextRun(last);
+      return !!n && n <= now;
+    };
+    return {
+      schedules: this.data.schedules.filter((s) => hit(s.cron)),
+      watches: this.data.watches.filter((w) => hit(w.cron)),
+      oneshots: (this.data.oneshots ?? []).filter((o) => new Date(o.at) <= now),
+    };
+  }
+
+  nextWake(now = new Date()): Date | undefined {
+    const times: number[] = [];
+    for (const c of [...this.data.schedules.map((s) => s.cron), ...this.data.watches.map((w) => w.cron)]) {
+      const n = new Cron(c, { timezone: TZ, paused: true }).nextRun(now);
+      if (n) times.push(n.getTime());
+    }
+    for (const o of this.data.oneshots ?? []) times.push(new Date(o.at).getTime());
+    return times.length ? new Date(Math.min(...times)) : undefined;
   }
 
   /** (Re)programme toutes les tâches. runner exécute une liste d'étapes. */
   startAll(runner: (who: string, steps: Step[]) => Promise<unknown>, watchRunner: (w: Watch) => Promise<unknown>) {
     for (const j of this.jobs.values()) j.stop();
     this.jobs.clear();
+    for (const o of this.data.oneshots ?? []) {
+      const at = new Date(o.at) > new Date() ? new Date(o.at) : new Date(Date.now() + 1000);
+      this.jobs.set(`o:${o.id}`, new Cron(at, { timezone: TZ }, async () => {
+        this.data.oneshots = (this.data.oneshots ?? []).filter((x) => x.id !== o.id);
+        this.save();
+        await runner("action programmée", [{ tool: o.tool, args: o.args }]).catch(() => undefined);
+      }));
+    }
     for (const s of this.data.schedules) {
       this.jobs.set(`s:${s.name}`, new Cron(s.cron, { timezone: TZ, protect: true }, async () => { await runner(`planif:${s.name}`, s.steps).catch(() => undefined); }));
     }

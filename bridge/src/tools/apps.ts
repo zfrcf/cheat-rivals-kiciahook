@@ -1,9 +1,8 @@
 import { z } from "zod";
-import { existsSync } from "node:fs";
 import { PilotError } from "../errors.js";
 import { findNode } from "../phone/uitree.js";
 import { tool, type Ctx, type ToolDef } from "./types.js";
-import { pushFile } from "./transfer.js";
+import { writeBytes } from "./transfer.js";
 
 /** Résout « WhatsApp » → com.whatsapp via la liste des applis (libellés fournis par l'app compagnon). */
 export async function resolvePackage(ctx: Ctx, nameOrPkg: string): Promise<string> {
@@ -16,6 +15,23 @@ export async function resolvePackage(ctx: Ctx, nameOrPkg: string): Promise<strin
     apps.find((a) => a.package.toLowerCase().includes(t.replace(/\s+/g, "")));
   if (!hit) throw new PilotError("APP_NOT_FOUND", `Aucune appli ne correspond à « ${nameOrPkg} ».`, "Utilise apps_list pour voir les noms exacts.");
   return hit.package;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Ouvre « Infos sur l'appli » et touche un bouton (repli sans shell : forcer l'arrêt…). */
+async function settingsButton(ctx: Ctx, pkg: string, labels: string[], confirmLabels: string[]) {
+  await ctx.device.call("intent.start", { action: "android.settings.APPLICATION_DETAILS_SETTINGS", data: `package:${pkg}` });
+  await sleep(1500);
+  const nodes = await ctx.device.tree();
+  const btn = labels.map((l) => findNode(nodes, { text: l })).find(Boolean);
+  if (!btn) throw new PilotError("UI_CHANGED", `Bouton « ${labels[0]} » introuvable.`);
+  await ctx.device.act("click", btn);
+  await sleep(900);
+  const after = await ctx.device.tree();
+  const conf = confirmLabels.map((l) => findNode(after, { text: l, exact: true })).find(Boolean);
+  if (conf) await ctx.device.act("click", conf);
+  await ctx.device.call("global.action", { action: "home" });
 }
 
 export const KNOWN_APPS: Record<string, string> = {
@@ -54,7 +70,8 @@ export const appTools: ToolDef[] = [
     schema: { app: z.string() },
     run: async (a, ctx) => {
       const pkg = await resolvePackage(ctx, a.app);
-      await ctx.device.call("app.close", { package: pkg });
+      if (await ctx.device.can("app.close")) await ctx.device.call("app.close", { package: pkg });
+      else await settingsButton(ctx, pkg, ["Forcer l'arrêt", "Arrêter", "Force stop"], ["OK", "Forcer l'arrêt"]);
       return { json: { ok: true, package: pkg } };
     },
   }),
@@ -68,15 +85,14 @@ export const appTools: ToolDef[] = [
   tool({
     name: "app_install",
     kind: "act",
-    description: "Install an APK located on the Mac (absolute path).",
-    schema: { apk_path: z.string() },
+    description: "Install an APK from an https URL (or a Mac path in Mac mode). The Android installer opens on the phone; Antoine taps Install (no silent install without Shizuku/ADB).",
+    schema: { source: z.string().describe("https URL of the .apk, or Mac path") },
     run: async (a, ctx) => {
-      if (!existsSync(a.apk_path)) throw new PilotError("FILE_NOT_FOUND", `APK introuvable sur le Mac : ${a.apk_path}`);
-      if (await ctx.device.adb.available()) return { json: { output: await ctx.device.adb.install(a.apk_path) } };
-      const { remote } = await pushFile(ctx, a.apk_path, "/sdcard/Download/PhonePilot");
+      const src = await ctx.platform.source(a.source);
+      const remote = `/sdcard/Download/PhonePilot/${src.name.endsWith(".apk") ? src.name : "app.apk"}`;
+      await writeBytes(ctx, remote, src.data);
       if (await ctx.device.hasShell()) return { json: await ctx.device.call("app.install_remote", { path: remote }) };
-      // Sans shell : ouvre l'installeur système, Antoine valide à l'écran.
-      return { json: { ...(await ctx.device.call("app.install_prompt", { path: remote })), note: "Installeur ouvert : valider sur le téléphone." } };
+      return { json: { ...(await ctx.device.call("app.install_prompt", { path: remote })), note: "Installeur ouvert : Antoine doit valider sur le téléphone." } };
     },
   }),
   tool({
@@ -88,7 +104,13 @@ export const appTools: ToolDef[] = [
     run: async (a, ctx) => {
       const pkg = await resolvePackage(ctx, a.app);
       if (/phonepilot|systemui|android\.settings/.test(pkg)) throw new PilotError("FORBIDDEN", "Désinstallation interdite pour cette appli.");
-      return { json: await ctx.device.call("app.uninstall", { package: pkg }) };
+      if (await ctx.device.can("app.uninstall")) return { json: await ctx.device.call("app.uninstall", { package: pkg }) };
+      await ctx.device.call("intent.start", { action: "android.intent.action.DELETE", data: `package:${pkg}` });
+      await sleep(1500);
+      const ok = findNode(await ctx.device.tree(), { text: "Désinstaller" }) ?? findNode(ctx.device.lastTree, { text: "OK", exact: true });
+      if (!ok) throw new PilotError("UI_CHANGED", "Boîte de désinstallation introuvable — vérifier l'écran.");
+      await ctx.device.act("click", ok);
+      return { json: { ok: true, package: pkg } };
     },
   }),
   tool({

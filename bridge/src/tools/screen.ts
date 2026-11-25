@@ -253,7 +253,7 @@ export const screenTools: ToolDef[] = [
   tool({
     name: "screen_record",
     kind: "act",
-    description: "Record the screen for N seconds (max 180) to /sdcard/Movies/PhonePilot; optionally pull the video to the Mac.",
+    description: "Record the screen for N seconds (max 180) to /sdcard/Movies/PhonePilot; returns a download link.",
     schema: { seconds: z.number().default(10), pull: z.boolean().default(true) },
     run: async (a, ctx) => {
       const r = await ctx.device.call("screen.record", { seconds: a.seconds }, a.seconds * 1000 + 30000);

@@ -1,6 +1,4 @@
 import { z } from "zod";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { Cron } from "croner";
 import { PilotError } from "../errors.js";
 import { findNode } from "../phone/uitree.js";
@@ -8,7 +6,7 @@ import { fieldNear } from "../phone/uitree.js";
 import type { AutomationStore, Step } from "../automation/store.js";
 import { TZ } from "../automation/store.js";
 import { tool, type Ctx, type ToolDef } from "./types.js";
-import { pullFile } from "./transfer.js";
+import { saveDocument } from "./transfer.js";
 
 const stepSchema = z.object({ tool: z.string(), args: z.record(z.any()).optional() });
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -187,26 +185,31 @@ export const automationTools: ToolDef[] = [
   tool({
     name: "backup_run",
     kind: "act",
-    description: "Back up new photos (DCIM, Pictures) and documents (Documents, Download) modified since the last backup to the Mac (~/PhonePilot/Sauvegardes/AAAA-MM-JJ).",
+    description:
+      "Back up new photos/documents since the last backup. Mac mode: copies to ~/PhonePilot/Sauvegardes. Cloud mode: zips them on the phone and returns a download link (for real daily photo backup, enable Google Photos backup instead).",
     schema: { since: z.string().optional().describe("ISO date; default = last backup or 24h") },
     run: async (a, ctx) => {
       const st = store(ctx);
       const since = a.since ?? st.data.lastBackup ?? new Date(Date.now() - 864e5).toISOString();
-      const dest = join(ctx.cfg.backupDir, new Date().toISOString().slice(0, 10));
-      let count = 0;
-      let bytes = 0;
+      const files: { path: string; size?: number }[] = [];
       for (const root of ["/sdcard/DCIM", "/sdcard/Pictures", "/sdcard/Documents", "/sdcard/Download"]) {
-        const files: { path: string }[] = await ctx.device.call("files.search", { root, after: since, limit: 2000, sort: "date" }, 120000).catch(() => []);
-        for (const f of files) {
-          const sub = join(dest, root.split("/").pop()!);
-          const r = await pullFile(ctx, f.path, sub);
-          count++;
-          bytes += r.bytes;
-        }
+        files.push(...(await ctx.device.call("files.search", { root, after: since, limit: 2000, sort: "date" }, 120000).catch(() => [])));
+      }
+      const mine = files.filter((f) => !f.path.includes("/PhonePilot/"));
+      let result: unknown;
+      if (!mine.length) result = { fichiers: 0 };
+      else if (ctx.platform.kind === "mac") {
+        const day = new Date().toISOString().slice(0, 10);
+        for (const f of mine) await ctx.platform.deliver(ctx, f.path, `${ctx.cfg.backupDir}/${day}/${f.path.split("/")[2]}`);
+        result = { fichiers: mine.length, dossier: `${ctx.cfg.backupDir}/${day}` };
+      } else {
+        const zip = `/sdcard/Download/PhonePilot/sauvegarde_${new Date().toISOString().slice(0, 10)}.zip`;
+        await ctx.device.call("archive.zip", { paths: mine.map((f) => f.path), dest: zip }, 600000);
+        result = { fichiers: mine.length, ...(await ctx.platform.deliver(ctx, zip)) };
       }
       st.data.lastBackup = new Date().toISOString();
       st.save();
-      return { json: { ok: true, fichiers: count, octets: bytes, dossier: dest } };
+      return { json: result };
     },
   }),
   tool({
@@ -234,7 +237,7 @@ export const automationTools: ToolDef[] = [
   tool({
     name: "daily_report",
     kind: "observe",
-    description: "Daily report: battery, storage, missed calls (24h), notification summary by app. Saved to ~/PhonePilot/Rapports on the Mac; notify=true also sends a phone notification.",
+    description: "Daily report: battery, storage, missed calls (24h), notification summary by app. Saved in /sdcard/Documents/PhonePilot; notify=true also sends a phone notification.",
     schema: { notify: z.boolean().default(false) },
     run: async (a, ctx) => {
       const safe = async (p: Promise<any>) => p.catch((e: Error) => ({ erreur: e.message }));
@@ -257,12 +260,9 @@ export const automationTools: ToolDef[] = [
           .map(([k, v]) => `${k} ${v}`)
           .join(", ")}`,
       ].join("\n");
-      const dir = join(ctx.cfg.inboxDir, "..", "Rapports");
-      mkdirSync(dir, { recursive: true });
-      const path = join(dir, `${new Date().toISOString().slice(0, 10)}.md`);
-      writeFileSync(path, md + "\n");
+      const saved = await saveDocument(ctx, `rapport_${new Date().toISOString().slice(0, 10)}.md`, md + "\n").catch(() => undefined);
       if (a.notify) await ctx.device.call("notify", { title: "Rapport du jour", text: md.split("\n").slice(1).join(" · ").slice(0, 500) }).catch(() => undefined);
-      return { text: md + `\n\n(Enregistré : ${path})`, untrusted: "rapport" };
+      return { text: md + (saved ? `\n\n(Enregistré : ${saved.link ?? saved.local ?? saved.path})` : ""), untrusted: "rapport" };
     },
   }),
 ];

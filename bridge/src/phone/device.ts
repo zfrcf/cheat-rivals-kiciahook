@@ -1,6 +1,6 @@
 import { Errors, PilotError } from "../errors.js";
-import type { PhoneHub } from "./hub.js";
-import { AdbShell, ShizukuShell, type Shell } from "./shell.js";
+import type { PhoneLink } from "./hub.js";
+import { ShizukuShell, type AdbLike, type Shell } from "./shell.js";
 import { SHELL_IMPL } from "./shellimpl.js";
 import { enrich, findNode, type Selector, type UiNode } from "./uitree.js";
 
@@ -15,8 +15,8 @@ export class Device {
   lastTreeAt = 0;
 
   constructor(
-    public hub: PhoneHub,
-    public adb: AdbShell,
+    public hub: PhoneLink,
+    public adb: AdbLike,
   ) {}
 
   async shell(): Promise<Shell> {

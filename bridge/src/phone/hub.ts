@@ -23,7 +23,18 @@ interface Pending {
   timer: NodeJS.Timeout;
 }
 
-export class PhoneHub extends EventEmitter {
+/** Ce dont le reste du bridge a besoin d'une liaison téléphone (WebSocket Node ou Durable Object cloud). */
+export interface PhoneLink extends EventEmitter {
+  readonly connected: boolean;
+  methods: Set<string>;
+  shizuku: boolean;
+  device: DeviceInfo;
+  connectedAt?: Date;
+  has(method: string): boolean;
+  request<T = any>(method: string, params?: unknown, timeoutMs?: number): Promise<T>;
+}
+
+export class PhoneHub extends EventEmitter implements PhoneLink {
   private wss?: WebSocketServer;
   private socket?: WebSocket;
   private pending = new Map<string, Pending>();

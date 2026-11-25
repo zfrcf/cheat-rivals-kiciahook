@@ -65,18 +65,15 @@ export const systemTools: ToolDef[] = [
         case "dnd": {
           const r = (await ctx.device.can("settings.dnd")) ? await ctx.device.call("settings.dnd", { on }) : await quickTile(ctx, ["Ne pas déranger", "Do not disturb"], on);
           if (on && a.until) {
-            const ms = new Date(a.until).getTime() - Date.now();
-            if (ms > 0) {
-              const t = setTimeout(() => ctx.run("settings_set", { setting: "dnd", on: false }, "minuteur NPD").catch(() => undefined), ms);
-              t.unref?.();
-            }
+            const at = new Date(a.until);
+            if (at.getTime() > Date.now()) ctx.platform.oneShot(at, "settings_set", { setting: "dnd", on: false });
           }
           return { json: { ...r, until: a.until } };
         }
         case "brightness":
           return { json: await ctx.device.call("settings.brightness", { percent: a.value ?? 50 }) };
         case "dark_mode":
-          return { json: await ctx.device.call("settings.dark_mode", { on }) };
+          return { json: (await ctx.device.can("settings.dark_mode")) ? await ctx.device.call("settings.dark_mode", { on }) : await quickTile(ctx, ["Mode sombre", "Thème sombre", "Dark mode"], on) };
         case "screen_timeout":
           return { json: await ctx.device.call("settings.screen_timeout", { seconds: a.value ?? 60 }) };
         case "auto_rotate":
@@ -133,10 +130,21 @@ export const systemTools: ToolDef[] = [
   tool({
     name: "reboot",
     kind: "act",
-    description: "Reboot the phone (always confirmed on the phone). After reboot Shizuku is inactive until relaunched from the Mac.",
+    description: "Reboot the phone (always confirmed on the phone). Uses the power menu when no shell is available. The companion app restarts by itself after boot (remote control resumes in ~1-2 min, phone must be unlocked once if it has a PIN).",
     schema: {},
-    confirm: () => ({ category: "redemarrage", summary: "Redémarrer le téléphone (Shizuku sera à relancer depuis le Mac)" }),
-    run: async (_a, ctx) => ({ json: await ctx.device.call("power.reboot") }),
+    confirm: () => ({ category: "redemarrage", summary: "Redémarrer le téléphone" }),
+    run: async (_a, ctx) => {
+      if (await ctx.device.hasShell()) return { json: await ctx.device.call("power.reboot") };
+      await ctx.device.call("global.action", { action: "power_dialog" });
+      await sleep(1200);
+      const btn = findNode(await ctx.device.tree(), { text: "Redémarrer" }) ?? findNode(ctx.device.lastTree, { text: "Restart" });
+      if (!btn) throw new PilotError("UI_CHANGED", "Bouton « Redémarrer » introuvable dans le menu d'alimentation.");
+      await ctx.device.act("click", btn);
+      await sleep(1000);
+      const again = findNode(await ctx.device.tree().catch(() => []), { text: "Redémarrer" });
+      if (again) await ctx.device.act("click", again); // EMUI demande une 2e pression
+      return { json: { ok: true, note: "Redémarrage lancé. L'app se reconnectera seule après le démarrage." } };
+    },
   }),
   tool({
     name: "shell",
