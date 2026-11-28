@@ -1,0 +1,10 @@
+# Gabarit court et nerveux (~1 min 30 à 140 BPM) : intro et breaks raccourcis.
+nom: court_intense
+sections:
+  - {nom: intro,  mesures: 4,  source: hook, voix: filtre,  instru: filtre, hats: true,  kick: false, clap: false, chops: false, basse: false, fx: [breath]}
+  - {nom: build,  mesures: 4,  source: hook, voix: filtre,  instru: filtre, hats: true,  kick: build, clap: roll,  chops: roll,  basse: false, fx: [riser]}
+  - {nom: drop,   mesures: 16, source: hook, voix: false,   instru: plein,  hats: true,  kick: true,  clap: true,  chops: drop,  basse: true,  fx: [crash, squeak, horn]}
+  - {nom: break,  mesures: 4,  source: hook, voix: intacte, instru: filtre, hats: false, kick: false, clap: false, chops: false, basse: false, fx: [squeak]}
+  - {nom: build2, mesures: 4,  source: hook, voix: filtre,  instru: filtre, hats: true,  kick: build, clap: roll,  chops: roll,  basse: false, fx: [riser, siren]}
+  - {nom: drop2,  mesures: 16, source: hook, voix: false,   instru: plein,  hats: true,  kick: true,  clap: true,  chops: variation, basse: true, fx: [crash, squeak, horn]}
+  - {nom: outro,  mesures: 4,  source: hook, voix: filtre,  instru: filtre, hats: true,  kick: true,  clap: false, chops: false, basse: false, fx: [], fondu: true}

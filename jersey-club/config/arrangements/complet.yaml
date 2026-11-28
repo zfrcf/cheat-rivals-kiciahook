@@ -1,0 +1,9 @@
+# Gabarit complet : suit la structure du morceau source. Chaque segment source reçoit
+# un type ; le hook devient un drop, les 4 mesures qui le précèdent un build.
+nom: complet
+types:
+  intro:   {voix: filtre,  instru: filtre, hats: true,  kick: false, clap: false, chops: false, basse: false, fx: [breath]}
+  couplet: {voix: intacte, instru: plein,  hats: true,  kick: true,  clap: true,  chops: false, basse: true,  fx: [squeak]}
+  build:   {voix: intacte, instru: filtre, hats: true,  kick: build, clap: roll,  chops: roll,  basse: false, fx: [riser]}
+  drop:    {voix: false,   instru: plein,  hats: true,  kick: true,  clap: true,  chops: drop,  basse: true,  fx: [crash, squeak, horn]}
+  outro:   {voix: filtre,  instru: filtre, hats: true,  kick: true,  clap: false, chops: false, basse: false, fx: [], fondu: true}

@@ -20,7 +20,7 @@ parametres:
   fx_density:       {type: continu, min: 0.0, max: 1.0, defaut: 0.4, desc: "Densité des FX (horns, sirènes, souffles)"}
   squeak_amount:    {type: continu, min: 0.0, max: 1.0, defaut: 0.5, desc: "Présence du bed squeak"}
   keep_original_instru: {type: continu, min: 0.0, max: 1.0, defaut: 0.45, desc: "Niveau de l'instru d'origine en fond (0 = coupée)"}
-  arrangement_template: {type: categoriel, options: [court], defaut: court, structurant: false, desc: "Gabarit d'arrangement (config/arrangements)"}
+  arrangement_template: {type: categoriel, options: [court, court_intense], defaut: court, structurant: false, desc: "Gabarit d'arrangement (config/arrangements)"}
   lufs_target:      {type: continu, min: -12.0, max: -6.0, defaut: -8.0, desc: "Loudness intégrée visée (LUFS)"}
 
 # Paramètres fixes (non appris) — modifiables à la main.

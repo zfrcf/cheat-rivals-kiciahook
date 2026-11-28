@@ -201,14 +201,14 @@ def parse_ticks(spec) -> list[int]:
 
     Accepte une liste explicite, ou une chaîne « every N » (un coup tous les N ticks).
     """
+    if isinstance(spec, dict):
+        spec = spec.get("ticks", [])
     if isinstance(spec, str):
         s = spec.strip().lower()
         if s.startswith("every"):
             step = int(s.split()[1])
             return list(range(0, TICKS_PER_BAR, step))
         raise ValueError(f"Pattern inconnu : {spec}")
-    if isinstance(spec, dict):
-        spec = spec.get("ticks", [])
     return sorted(int(t) % TICKS_PER_BAR for t in spec)
 
 

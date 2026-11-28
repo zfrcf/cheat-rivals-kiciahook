@@ -65,10 +65,13 @@ def build_time_map(beats: list[float], phase: int, m: float, target_bpm: float, 
 
 def stretch_aligned(y: np.ndarray, time_map, start: int, semitones: float, sr: int = SR) -> np.ndarray:
     """Applique le time-map (et le pitch) à un signal (2, n)."""
-    x = y[:, start:].T.astype(np.float64)
+    # pré-roll de silence : le transitoire d'entrée de rubberband tombe dans le pad
+    pad = int(0.5 * sr)
+    x = np.concatenate([np.zeros((pad, y.shape[0])), y[:, start:].T.astype(np.float64)])
+    tm = [(0, 0)] + [(s + pad, d + pad) for s, d in time_map]
     rb = {"--pitch": f"{semitones:.4f}"} if abs(semitones) > 1e-3 else {}
-    out = pyrb.timemap_stretch(x, sr, time_map, rbargs=rb)
-    return np.ascontiguousarray(out.T.astype(np.float32))
+    out = pyrb.timemap_stretch(x, sr, tm, rbargs=rb)
+    return np.ascontiguousarray(out[pad:].T.astype(np.float32))
 
 
 def align_stems(stems: dict, tempo: dict, target_bpm: float, pitch_mode="preserve",

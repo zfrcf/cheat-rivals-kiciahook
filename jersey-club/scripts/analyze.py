@@ -302,11 +302,40 @@ def analyze_bars(mix_aligned: np.ndarray, harmonic_aligned: np.ndarray, vocals_a
 
 
 def measure_bpm(y: np.ndarray, sr: int = SR, target: float | None = None) -> float:
-    """BPM mesuré d'un rendu (pour l'évaluation) ; replie les erreurs d'octave vers la cible."""
-    t = analyze_tempo(y, sr, None)["bpm"]
+    """BPM mesuré d'un rendu, par autocorrélation de l'enveloppe d'onsets.
+
+    1) période de temps la plus forte entre 60 et 200 BPM ; 2) affinage sur les pics
+    d'autocorrélation à 4, 8 et 16 temps (précision ≈ 0,02 BPM sur une minute) ;
+    3) les erreurs d'octave (×2, ×1,5) sont repliées vers la cible si elle est fournie.
+    """
+    hop = 64
+    env = librosa.onset.onset_strength(y=mono(y), sr=sr, hop_length=hop)
+    env = env - env.mean()
+    n = len(env)
+    nfft = 1 << int(np.ceil(np.log2(2 * n)))
+    F = np.fft.rfft(env, nfft)
+    ac = np.fft.irfft(F * np.conj(F))[:n]
+    ac /= ac[0] + 1e-12
+    fps = sr / hop
+    lo, hi = int(fps * 60 / 200), int(fps * 60 / 60)
+    lag = lo + int(np.argmax(ac[lo:hi]))
+
+    def refine(center, half):
+        a, b = max(1, int(center - half)), min(n - 2, int(center + half))
+        if b <= a:
+            return float(center)
+        i = a + int(np.argmax(ac[a:b + 1]))
+        y0, y1, y2 = ac[i - 1], ac[i], ac[i + 1]
+        den = y0 - 2 * y1 + y2
+        return i + (0.5 * (y0 - y2) / den if abs(den) > 1e-12 else 0.0)
+
+    beat = refine(lag, 2)
+    for k in (4, 8, 16):
+        if k * beat * 1.03 < n / 2:
+            beat = refine(k * beat, max(2, 0.01 * k * beat)) / k
+    t = 60.0 * fps / beat
     if target:
-        cands = [t, t * 2, t / 2, t * 1.5, t / 1.5]
-        t = min(cands, key=lambda c: abs(c - target))
+        t = min([t, t * 2, t / 2, t * 1.5, t / 1.5, t * 3, t / 3], key=lambda c: abs(c - target))
     return float(t)
 
 

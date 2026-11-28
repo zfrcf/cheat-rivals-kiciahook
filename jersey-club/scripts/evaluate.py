@@ -46,11 +46,28 @@ def band_profile(y: np.ndarray, sr=SR) -> dict:
 
 
 def detect_kicks(y: np.ndarray, sr=SR) -> np.ndarray:
-    """Attaques de kick : enveloppe de la bande 30-150 Hz, montée la plus raide."""
+    """Attaques de kick dans la bande 30-150 Hz.
+
+    1) pics de flux spectral (candidats) ; 2) raffinement : instant de montée la plus
+    raide de l'enveloppe grave (RMS 1 ms) dans les 30 ms qui précèdent le pic. Le
+    raffinement évite le retard induit par une 808 déclenchée au même instant.
+    """
     x = sosfiltfilt(butter(4, [30 / (sr / 2), 150 / (sr / 2)], "band", output="sos"), mono(y))
     env = librosa.onset.onset_strength(y=x, sr=sr, hop_length=64, n_mels=8, fmax=200, lag=1, max_size=1)
     pk = librosa.util.peak_pick(env, pre_max=20, post_max=20, pre_avg=40, post_avg=10, delta=env.max() * 0.08, wait=30)
-    return librosa.frames_to_time(pk, sr=sr, hop_length=64)
+    cand = librosa.frames_to_samples(pk, hop_length=64)
+    from scipy.signal import hilbert
+    nfft = 1 << int(np.ceil(np.log2(len(x))))
+    amp = np.abs(hilbert(x, N=nfft)[: len(x)])
+    w = max(1, int(0.002 * sr))
+    amp = np.convolve(amp, np.ones(w) / w, mode="same")
+    d = np.diff(amp, prepend=amp[0])
+    out = []
+    for c in cand:
+        a, b = max(0, c - int(0.03 * sr)), min(len(d), c + int(0.005 * sr))
+        if b > a:
+            out.append(a + int(np.argmax(d[a:b])))
+    return np.array(out) / sr
 
 
 def kick_timing(y: np.ndarray, expected: np.ndarray, sr=SR) -> dict:
