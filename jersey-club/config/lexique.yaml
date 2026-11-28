@@ -1,0 +1,36 @@
+# Traduction des commentaires libres en règles (learn.py).
+# Chaque entrée : motifs (sous-chaînes, minuscules, sans accents), paramètre ciblé,
+# direction (+ / - / =valeur / !valeur à éviter), force (fraction de la plage).
+# Claude peut aussi écrire une règle directement : learn.py --regle "param:+".
+- {motifs: ["kick trop sec", "kick trop court", "kick plus long", "kick plus rond"], param: kick_decay, direction: "+", force: 0.25}
+- {motifs: ["kick trop long", "kick trop boomy", "kick bave", "kick plus sec", "kick plus court"], param: kick_decay, direction: "-", force: 0.25}
+- {motifs: ["trop de chops", "chops trop denses", "trop charge", "moins de chops"], param: chop_density, direction: "-", force: 0.25}
+- {motifs: ["pas assez de chops", "plus de chops", "chops trop rares"], param: chop_density, direction: "+", force: 0.25}
+- {motifs: ["trop de stutter", "moins de stutter", "trop begaye"], param: stutter_prob, direction: "-", force: 0.25}
+- {motifs: ["plus de stutter", "j'aime les stutter", "j'aime le stutter"], param: stutter_prob, direction: "+", force: 0.25}
+- {motifs: ["voix pitchee", "j'aime quand la voix est pitchee", "plus aigu", "chops plus aigus"], param: chop_pitch_shift, direction: "=7", force: 1}
+- {motifs: ["pas de pitch", "voix naturelle", "chops pas pitches"], param: chop_pitch_shift, direction: "=0", force: 1}
+- {motifs: ["sped up", "plus rapide et aigu", "effet nightcore"], param: pitch_mode, direction: "=follow", force: 1}
+- {motifs: ["garder la tonalite", "pas sped up", "trop aigu"], param: pitch_mode, direction: "=preserve", force: 1}
+- {motifs: ["trop rapide", "moins vite", "tempo trop rapide"], param: bpm_target, direction: "-", force: 0.2}
+- {motifs: ["trop lent", "plus vite", "tempo trop lent"], param: bpm_target, direction: "+", force: 0.2}
+- {motifs: ["pas assez de pompe", "plus de sidechain", "plus de pompe"], param: sidechain_depth, direction: "+", force: 0.2}
+- {motifs: ["trop de pompe", "moins de sidechain", "ca pompe trop"], param: sidechain_depth, direction: "-", force: 0.2}
+- {motifs: ["trop de squeak", "squeak agacant", "moins de squeak"], param: squeak_amount, direction: "-", force: 0.3}
+- {motifs: ["plus de squeak", "j'aime le squeak"], param: squeak_amount, direction: "+", force: 0.3}
+- {motifs: ["trop de fx", "trop d'effets", "sirenes agacantes"], param: fx_density, direction: "-", force: 0.3}
+- {motifs: ["plus de fx", "plus d'effets"], param: fx_density, direction: "+", force: 0.3}
+- {motifs: ["instru trop fort", "on n'entend que l'original", "moins d'instru"], param: keep_original_instru, direction: "-", force: 0.25}
+- {motifs: ["plus d'instru", "garder plus l'original", "on perd le morceau"], param: keep_original_instru, direction: "+", force: 0.25}
+- {motifs: ["trop robotique", "trop carre", "plus humain"], param: humanize_ms, direction: "+", force: 0.25}
+- {motifs: ["trop brouillon", "pas en place", "plus carre"], param: humanize_ms, direction: "-", force: 0.3}
+- {motifs: ["plus de swing", "plus groovy"], param: swing, direction: "+", force: 0.25}
+- {motifs: ["moins de swing", "trop swing"], param: swing, direction: "-", force: 0.25}
+- {motifs: ["pas de basse", "sans basse", "basse inutile"], param: bass_mode, direction: "=aucune", force: 1}
+- {motifs: ["basse d'origine", "garder la basse"], param: bass_mode, direction: "=origine", force: 1}
+- {motifs: ["808 sur les kicks", "basse sur le kick"], param: bass_mode, direction: "=808_kick", force: 1}
+- {motifs: ["trop fort", "trop compresse", "ecrase"], param: lufs_target, direction: "-", force: 0.2}
+- {motifs: ["pas assez fort", "trop faible", "manque de punch"], param: lufs_target, direction: "+", force: 0.15}
+- {motifs: ["kick rafale", "j'aime la rafale"], param: kick_pattern, direction: "=bounce_rafale", force: 1}
+- {motifs: ["kick syncope", "j'aime la syncope"], param: kick_pattern, direction: "=bounce_syncope", force: 1}
+- {motifs: ["hats en triolets", "hats triolet"], param: hat_pattern, direction: "=triolets_dbl", force: 1}

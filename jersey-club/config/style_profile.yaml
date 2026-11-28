@@ -1,0 +1,49 @@
+# Profil de style Jersey club — HYPOTHÈSES DE DÉPART, pas une vérité figée.
+# Chaque paramètre réglable : type (continu | categoriel), plage/options, défaut.
+# Les références (memory/references) recentrent les défauts ; les retours
+# (memory/preferences.json) et les règles (memory/lessons.md) les ajustent.
+version: 1
+parametres:
+  bpm_target:       {type: continu, min: 128, max: 155, defaut: 140, structurant: false, desc: "Tempo cible (BPM)"}
+  kick_pattern:     {type: categoriel, options: [bounce_classique, bounce_rafale, bounce_syncope], defaut: bounce_classique, structurant: true, desc: "Pattern de kick (patterns.yaml)"}
+  clap_pattern:     {type: categoriel, options: [backbeat, four_floor], defaut: backbeat, structurant: false, desc: "Pattern de clap"}
+  hat_pattern:      {type: categoriel, options: [doubles, triolets_dbl], defaut: doubles, structurant: false, desc: "Pattern de hi-hats"}
+  chop_density:     {type: continu, min: 0.1, max: 1.0, defaut: 0.55, desc: "Densité des vocal chops dans les drops (0-1)"}
+  stutter_prob:     {type: continu, min: 0.0, max: 0.9, defaut: 0.35, desc: "Probabilité d'un stutter en triolets par temps"}
+  chop_pitch_shift: {type: categoriel, options: [0, 3, 5, 7], defaut: 5, desc: "Transposition (demi-tons) des chops pitchés"}
+  pitch_mode:       {type: categoriel, options: [preserve, follow], defaut: preserve, structurant: true, desc: "preserve = tonalité d'origine, follow = effet sped-up"}
+  swing:            {type: continu, min: 0.0, max: 0.4, defaut: 0.05, desc: "Swing des doubles-croches (hats, chops)"}
+  humanize_ms:      {type: continu, min: 0.0, max: 8.0, defaut: 3.0, desc: "Micro-décalages aléatoires (ms)"}
+  bass_mode:        {type: categoriel, options: ["808_kick", "808_temps", origine, aucune], defaut: "808_kick", structurant: true, desc: "Mode de basse"}
+  sidechain_depth:  {type: continu, min: 0.0, max: 0.95, defaut: 0.6, desc: "Profondeur du sidechain kick → basse/instru"}
+  kick_decay:       {type: continu, min: 0.08, max: 0.6, defaut: 0.22, desc: "Durée de décroissance du kick (s)"}
+  fx_density:       {type: continu, min: 0.0, max: 1.0, defaut: 0.4, desc: "Densité des FX (horns, sirènes, souffles)"}
+  squeak_amount:    {type: continu, min: 0.0, max: 1.0, defaut: 0.5, desc: "Présence du bed squeak"}
+  keep_original_instru: {type: continu, min: 0.0, max: 1.0, defaut: 0.45, desc: "Niveau de l'instru d'origine en fond (0 = coupée)"}
+  arrangement_template: {type: categoriel, options: [court], defaut: court, structurant: false, desc: "Gabarit d'arrangement (config/arrangements)"}
+  lufs_target:      {type: continu, min: -12.0, max: -6.0, defaut: -8.0, desc: "Loudness intégrée visée (LUFS)"}
+
+# Paramètres fixes (non appris) — modifiables à la main.
+fixes:
+  true_peak_max: -1.0          # dBTP
+  stretch_max: 0.20            # stretch résiduel au-delà duquel on avertit
+  multiplicateurs: [0.5, 1, 2]
+  bpm_tolerance: 0.5
+  kick_timing_max_ms: 10
+  fade_chop_ms: [3, 5]          # fondu entrée / sortie des chops
+  chop_pitch_prob: 0.25
+  bass_glide: true
+  hook_mesures: 8
+  phrase_mesures: 4
+
+# Paramètres « joker » candidats pour la variante C.
+joker: [kick_pattern, bass_mode, pitch_mode, hat_pattern]
+
+# Apprentissage
+apprentissage:
+  taux: 0.35                 # taux de la moyenne mobile exponentielle
+  min_retours_resserrage: 3  # avant ça, l'écart-type ne descend pas sous 70 % de l'initial
+  exploration_min: 0.15      # part de tirages hors optimum pour la variante B
+  std_initial_frac: 0.20     # écart-type initial = 20 % de la plage
+  std_min_frac: 0.04
+  poids_reference: 3         # poids d'un « pseudo-retour » de référence

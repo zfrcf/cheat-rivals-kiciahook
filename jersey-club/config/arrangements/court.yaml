@@ -1,0 +1,13 @@
+# Gabarit court (~2 min à 140 BPM). Couches possibles par section :
+#  kick/clap/hats : true | false | roll | build   voix : intacte | filtre | false
+#  instru : plein | filtre | false   chops : false | drop | variation | roll
+#  basse : true | false   fx : liste parmi riser, crash, squeak, horn, breath, siren
+nom: court
+sections:
+  - {nom: intro,  mesures: 8,  source: hook,  voix: filtre,  instru: filtre, hats: true,  kick: false, clap: false, chops: false, basse: false, fx: [breath]}
+  - {nom: build,  mesures: 8,  source: hook,  voix: filtre,  instru: filtre, hats: true,  kick: build, clap: roll,  chops: roll,  basse: false, fx: [riser]}
+  - {nom: drop,   mesures: 16, source: hook,  voix: false,   instru: plein,  hats: true,  kick: true,  clap: true,  chops: drop,  basse: true,  fx: [crash, squeak, horn]}
+  - {nom: break,  mesures: 8,  source: hook,  voix: intacte, instru: filtre, hats: false, kick: false, clap: false, chops: false, basse: false, fx: [squeak, breath]}
+  - {nom: build2, mesures: 4,  source: hook,  voix: filtre,  instru: filtre, hats: true,  kick: build, clap: roll,  chops: roll,  basse: false, fx: [riser, siren]}
+  - {nom: drop2,  mesures: 16, source: hook,  voix: false,   instru: plein,  hats: true,  kick: true,  clap: true,  chops: variation, basse: true, fx: [crash, squeak, horn]}
+  - {nom: outro,  mesures: 8,  source: hook,  voix: filtre,  instru: filtre, hats: true,  kick: true,  clap: false, chops: false, basse: false, fx: [], fondu: true}
