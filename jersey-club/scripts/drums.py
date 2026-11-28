@@ -251,7 +251,9 @@ def drum_events(plan: list[dict], params: dict, patterns: dict, rng: np.random.G
         if "siren" in fx and pos == L - 2 and rng.random() < 0.3 + fxd:
             add("siren", b, 0, 0.35, jitter=0)
         if "squeak" in fx and sq > 0.02:
-            spots = [18, 42] if bar.get("kick") else [12, 36]
+            kt = ticks_of(patterns, "kick", kp) + [TICKS_PER_BAR]
+            gaps = sorted(zip(np.diff(kt), kt[:-1]), reverse=True)[:2]  # les 2 plus grands trous
+            spots = sorted(int(a + g // 2) // 3 * 3 for g, a in gaps) if bar.get("kick") else [12, 36]
             for t in spots:
                 if rng.random() < sq:
                     add("squeak", b, t, 0.35 + 0.4 * sq, jitter=0.5, pan=rng.choice([-0.35, 0.35]))

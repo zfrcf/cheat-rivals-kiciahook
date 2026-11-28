@@ -2,24 +2,27 @@
 # Chaque paramètre réglable : type (continu | categoriel), plage/options, défaut.
 # Les références (memory/references) recentrent les défauts ; les retours
 # (memory/preferences.json) et les règles (memory/lessons.md) les ajustent.
-version: 1
+version: 2
+# v2 (2026-11-28) : défauts recalés sur les tutoriels Jersey club après un premier retour « horrible »
+# (kick 5 coups sur grille droite, kick 808 long qui porte le grave, instru d'origine discrète).
 parametres:
   bpm_target:       {type: continu, min: 128, max: 155, defaut: 140, structurant: false, desc: "Tempo cible (BPM)"}
-  kick_pattern:     {type: categoriel, options: [bounce_classique, bounce_rafale, bounce_syncope], defaut: bounce_classique, structurant: true, desc: "Pattern de kick (patterns.yaml)"}
+  kick_pattern:     {type: categoriel, options: [bounce_classique, bounce_rafale, bounce_syncope], defaut: jersey_classique, structurant: true, desc: "Pattern de kick (patterns.yaml)"}
   clap_pattern:     {type: categoriel, options: [backbeat, four_floor], defaut: backbeat, structurant: false, desc: "Pattern de clap"}
-  hat_pattern:      {type: categoriel, options: [doubles, triolets_dbl], defaut: doubles, structurant: false, desc: "Pattern de hi-hats"}
-  chop_density:     {type: continu, min: 0.1, max: 1.0, defaut: 0.55, desc: "Densité des vocal chops dans les drops (0-1)"}
-  stutter_prob:     {type: continu, min: 0.0, max: 0.9, defaut: 0.35, desc: "Probabilité d'un stutter en triolets par temps"}
+  hat_pattern:      {type: categoriel, options: [doubles, triolets_dbl], defaut: croches_off, structurant: false, desc: "Pattern de hi-hats"}
+  chop_density:     {type: continu, min: 0.1, max: 1.0, defaut: 0.5, desc: "Densité des vocal chops dans les drops (0-1)"}
+  chop_style:       {type: categoriel, options: [kick_lock, libre], defaut: kick_lock, desc: "kick_lock = mot de 2-3 syllabes rejoué sur les kicks ; libre = motifs aléatoires"}
+  stutter_prob:     {type: continu, min: 0.0, max: 0.9, defaut: 0.25, desc: "Probabilité d'un stutter en triolets par temps"}
   chop_pitch_shift: {type: categoriel, options: [0, 3, 5, 7], defaut: 5, desc: "Transposition (demi-tons) des chops pitchés"}
   pitch_mode:       {type: categoriel, options: [preserve, follow], defaut: preserve, structurant: true, desc: "preserve = tonalité d'origine, follow = effet sped-up"}
   swing:            {type: continu, min: 0.0, max: 0.4, defaut: 0.05, desc: "Swing des doubles-croches (hats, chops)"}
   humanize_ms:      {type: continu, min: 0.0, max: 8.0, defaut: 3.0, desc: "Micro-décalages aléatoires (ms)"}
-  bass_mode:        {type: categoriel, options: ["808_kick", "808_temps", origine, aucune], defaut: "808_kick", structurant: true, desc: "Mode de basse"}
+  bass_mode:        {type: categoriel, options: ["808_kick", "808_temps", origine, aucune], defaut: aucune, structurant: true, desc: "Mode de basse"}
   sidechain_depth:  {type: continu, min: 0.0, max: 0.95, defaut: 0.6, desc: "Profondeur du sidechain kick → basse/instru"}
-  kick_decay:       {type: continu, min: 0.08, max: 0.6, defaut: 0.22, desc: "Durée de décroissance du kick (s)"}
-  fx_density:       {type: continu, min: 0.0, max: 1.0, defaut: 0.4, desc: "Densité des FX (horns, sirènes, souffles)"}
-  squeak_amount:    {type: continu, min: 0.0, max: 1.0, defaut: 0.5, desc: "Présence du bed squeak"}
-  keep_original_instru: {type: continu, min: 0.0, max: 1.0, defaut: 0.45, desc: "Niveau de l'instru d'origine en fond (0 = coupée)"}
+  kick_decay:       {type: continu, min: 0.08, max: 0.6, defaut: 0.38, desc: "Durée de décroissance du kick (s)"}
+  fx_density:       {type: continu, min: 0.0, max: 1.0, defaut: 0.15, desc: "Densité des FX (horns, sirènes, souffles)"}
+  squeak_amount:    {type: continu, min: 0.0, max: 1.0, defaut: 0.35, desc: "Présence du bed squeak"}
+  keep_original_instru: {type: continu, min: 0.0, max: 1.0, defaut: 0.3, desc: "Niveau de l'instru d'origine en fond (0 = coupée)"}
   arrangement_template: {type: categoriel, options: [court, court_intense], defaut: court, structurant: false, desc: "Gabarit d'arrangement (config/arrangements)"}
   lufs_target:      {type: continu, min: -12.0, max: -6.0, defaut: -8.0, desc: "Loudness intégrée visée (LUFS)"}
 

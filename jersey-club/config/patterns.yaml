@@ -1,7 +1,11 @@
 # Patterns sur une grille de 48 ticks par mesure (12 par temps).
 # 3 ticks = double-croche, 4 = triolet de croches, 2 = triolet de doubles.
+# MAJ 2026-11-28 : les patterns « bounce_* » en triolets étaient des hypothèses erronées
+# (retour utilisateur : « horrible ») ; le pattern de référence est jersey_classique.
 # Les patterns extraits des références sont ajoutés automatiquement (source + score).
 kick:
+  jersey_classique: {ticks: [0, 12, 24, 33, 42], source: "tutoriels (Native Instruments) : 16es 1-5-9-12-15 = 2 noires, 2 croches pointées, 1 croche", score: 3.0}
+  jersey_rebond:    {ticks: [0, 12, 24, 33, 39, 42], source: "variante : jersey_classique + fantôme avant le dernier kick", score: 1.5}
   bounce_classique: {ticks: [0, 12, 24, 32, 40], source: hypothese, score: 1.0}   # noires sur 1-2, triolet de noires sur 3-4
   bounce_rafale:    {ticks: [0, 12, 24, 36, 40, 44], source: hypothese, score: 1.0}  # noires puis triolet de croches sur le 4
   bounce_syncope:   {ticks: [0, 12, 24, 30, 36], source: hypothese, score: 1.0}    # croche syncopée sur le 3-et
@@ -9,6 +13,7 @@ clap:
   backbeat:   {ticks: [12, 36], source: hypothese, score: 1.0}
   four_floor: {ticks: [0, 12, 24, 36], source: hypothese, score: 1.0}
 hats:
+  croches_off:  {ticks: [6, 18, 30, 42], source: "hats clairsemés (contre-temps)", score: 1.5}
   doubles:      {ticks: [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45], source: hypothese, score: 1.0}
   triolets_dbl: {ticks: "every 2", source: hypothese, score: 1.0}
 rolls:            # avant les drops, densité croissante (pas en ticks)

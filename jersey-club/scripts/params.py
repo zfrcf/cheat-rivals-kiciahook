@@ -173,6 +173,8 @@ def resolve(profil: str, variante: str, rng: np.random.Generator, cli: dict | No
     params = {}
     for k, s in specs.items():
         e, src = learned_entry(prefs, profil, k)
+        if s["type"] == "continu" and e is not None and e.get("poids", 0.0) < 0.15:
+            e = None  # pas encore de signal positif : le défaut (éventuellement corrigé) prime
         if s["type"] == "continu":
             lo, hi = s["min"], s["max"]
             mean = e["moyenne"] if e else base[k]

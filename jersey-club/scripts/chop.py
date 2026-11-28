@@ -67,8 +67,42 @@ def make_bank(vocals: np.ndarray, grid: Grid, hook: dict, fades_ms=(3, 5), max_c
     return bank
 
 
+def _phrase_kick(n_bars: int, bank_n: int, params: dict, rng, fixes: dict, kick_ticks, stutter_boost=0.0) -> list[dict]:
+    """Phrase « calée sur le kick » : un mot de 2-3 syllabes rejoué sur les coups de kick.
+
+    C'est la signature Jersey club : la voix répond au rebond du kick, la boucle est courte
+    et répétitive (donc mémorisable) ; stutter en triolets seulement en fin de phrase.
+    """
+    dens = float(params["chop_density"])
+    stut = min(0.95, float(params["stutter_prob"]) + stutter_boost)
+    semis = int(params.get("chop_pitch_shift", 0))
+    ppitch = float(fixes.get("chop_pitch_prob", 0.25))
+    L = int(rng.integers(2, 4))
+    start = int(rng.integers(0, max(bank_n - L + 1, 1)))
+    word = [(start + i) % bank_n for i in range(L)]
+    pitched = {c: (semis if semis and rng.random() < ppitch else 0) for c in word}
+    kt = sorted(kick_ticks) or [0, 12, 24, 36]
+    keep = [True] + [rng.random() < 0.45 + 0.55 * dens for _ in kt[1:]]
+    ev = []
+    for b in range(n_bars):
+        last_bar = b == n_bars - 1
+        for i, t in enumerate(kt):
+            nxt = kt[i + 1] if i + 1 < len(kt) else TICKS_PER_BAR
+            if last_bar and t >= 36 and rng.random() < stut:
+                c = word[-1]
+                for tt in range(t, TICKS_PER_BAR, 4):
+                    ev.append({"tick": b * 48 + tt, "chop": c, "semis": pitched[c], "rev": False, "gain": 0.8, "slot": 4})
+                break
+            if not keep[i]:
+                continue
+            c = word[i % L]
+            ev.append({"tick": b * 48 + t, "chop": c, "semis": pitched[c], "rev": False,
+                       "gain": 1.0 if i == 0 else 0.88, "slot": max(2, min(nxt - t, 12))})
+    return ev
+
+
 def _phrase(n_bars: int, bank_n: int, params: dict, rng, fixes: dict, stutter_boost: float = 0.0) -> list[dict]:
-    """Génère une phrase de chops (événements relatifs au début de la phrase)."""
+    """Génère une phrase de chops libre (événements relatifs au début de la phrase)."""
     dens = float(params["chop_density"])
     stut = min(0.95, float(params["stutter_prob"]) + stutter_boost)
     semis = int(params.get("chop_pitch_shift", 0))
@@ -98,7 +132,7 @@ def _phrase(n_bars: int, bank_n: int, params: dict, rng, fixes: dict, stutter_bo
     return ev
 
 
-def chop_events(plan: list[dict], bank: list, params: dict, rng, fixes: dict) -> list[dict]:
+def chop_events(plan: list[dict], bank: list, params: dict, rng, fixes: dict, kick_ticks=None) -> list[dict]:
     """Place les phrases de chops selon le plan d'arrangement."""
     if not bank:
         return []
@@ -121,7 +155,11 @@ def chop_events(plan: list[dict], bank: list, params: dict, rng, fixes: dict) ->
         if key not in cache:
             sub = np.random.default_rng(rng.integers(1 << 31))
             boost = 0.15 if mode == "variation" else 0.0
-            cache[key] = (_phrase(2, n, params, sub, fixes, boost), _phrase(2, n, params, sub, fixes, boost + 0.2))
+            if params.get("chop_style", "kick_lock") == "kick_lock":
+                cache[key] = (_phrase_kick(2, n, params, sub, fixes, kick_ticks, boost),
+                              _phrase_kick(2, n, params, sub, fixes, kick_ticks, boost + 0.3))
+            else:
+                cache[key] = (_phrase(2, n, params, sub, fixes, boost), _phrase(2, n, params, sub, fixes, boost + 0.2))
         main, fill = cache[key]
         ph = fill if (pos // 2) % 4 == 3 else main  # une phrase « fill » tous les 8 mesures
         for e in ph:

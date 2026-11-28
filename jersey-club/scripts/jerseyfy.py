@@ -107,7 +107,8 @@ def render_variant(ctx: Contexte, params: dict, seed: int, rendu: dict) -> dict:
     if not bank:
         bank = make_bank(al["other"], g, ana["hook"], fixes.get("fade_chop_ms", [3, 5]))
         source_chops = "instru (aucune voix exploitable)"
-    cev = chop_events(plan, bank, p, rng, fixes)
+    from drums import ticks_of
+    cev = chop_events(plan, bank, p, rng, fixes, ticks_of(pats, "kick", p["kick_pattern"]))
     chops, cuts = render_chops(cev, bank, g, n, p, fixes, rng) if bank else (np.zeros((2, n), np.float32), [])
     # couches source
     voix = render_source_layer(al["vocals"], plan, g, n, "voix", ("intacte",))

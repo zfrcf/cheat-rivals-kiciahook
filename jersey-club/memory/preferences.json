@@ -1,0 +1,284 @@
+{
+  "version": 1,
+  "n_retours": {
+    "rap": 1,
+    "*": 1
+  },
+  "profils": {
+    "rap": {
+      "bpm_target": {
+        "moyenne": 140.0,
+        "ecart_type": 5.4,
+        "n": 3
+      },
+      "kick_pattern": {
+        "alpha": {
+          "bounce_classique": 1.0,
+          "bounce_rafale": 1.0,
+          "bounce_syncope": 1.0
+        },
+        "beta": {
+          "bounce_classique": 2.0,
+          "bounce_rafale": 3.0,
+          "bounce_syncope": 1.0
+        }
+      },
+      "clap_pattern": {
+        "alpha": {
+          "backbeat": 1.0,
+          "four_floor": 1.0
+        },
+        "beta": {
+          "backbeat": 4.0,
+          "four_floor": 1.0
+        }
+      },
+      "hat_pattern": {
+        "alpha": {
+          "doubles": 1.0,
+          "triolets_dbl": 1.0
+        },
+        "beta": {
+          "doubles": 3.0,
+          "triolets_dbl": 2.0
+        }
+      },
+      "chop_density": {
+        "moyenne": 0.55,
+        "ecart_type": 0.18000000000000002,
+        "n": 3
+      },
+      "stutter_prob": {
+        "moyenne": 0.35,
+        "ecart_type": 0.18000000000000002,
+        "n": 3
+      },
+      "chop_pitch_shift": {
+        "alpha": {
+          "0": 1.0,
+          "3": 1.0,
+          "5": 1.0,
+          "7": 1.0
+        },
+        "beta": {
+          "0": 1.0,
+          "3": 2.0,
+          "5": 3.0,
+          "7": 1.0
+        }
+      },
+      "pitch_mode": {
+        "alpha": {
+          "preserve": 1.0,
+          "follow": 1.0
+        },
+        "beta": {
+          "preserve": 4.0,
+          "follow": 1.0
+        }
+      },
+      "swing": {
+        "moyenne": 0.05,
+        "ecart_type": 0.08000000000000002,
+        "n": 3
+      },
+      "humanize_ms": {
+        "moyenne": 3.0,
+        "ecart_type": 1.6,
+        "n": 3
+      },
+      "bass_mode": {
+        "alpha": {
+          "808_kick": 1.0,
+          "808_temps": 1.0,
+          "origine": 1.0,
+          "aucune": 1.0
+        },
+        "beta": {
+          "808_kick": 3.0,
+          "808_temps": 1.0,
+          "origine": 2.0,
+          "aucune": 1.0
+        }
+      },
+      "sidechain_depth": {
+        "moyenne": 0.6,
+        "ecart_type": 0.19,
+        "n": 3
+      },
+      "kick_decay": {
+        "moyenne": 0.22,
+        "ecart_type": 0.10400000000000001,
+        "n": 3
+      },
+      "fx_density": {
+        "moyenne": 0.4,
+        "ecart_type": 0.2,
+        "n": 3
+      },
+      "squeak_amount": {
+        "moyenne": 0.5,
+        "ecart_type": 0.2,
+        "n": 3
+      },
+      "keep_original_instru": {
+        "moyenne": 0.45,
+        "ecart_type": 0.2,
+        "n": 3
+      },
+      "arrangement_template": {
+        "alpha": {
+          "court": 1.0,
+          "court_intense": 1.0
+        },
+        "beta": {
+          "court": 4.0,
+          "court_intense": 1.0
+        }
+      },
+      "lufs_target": {
+        "moyenne": -8.0,
+        "ecart_type": 1.2000000000000002,
+        "n": 3
+      }
+    },
+    "*": {
+      "bpm_target": {
+        "moyenne": 140.0,
+        "ecart_type": 5.4,
+        "n": 3
+      },
+      "kick_pattern": {
+        "alpha": {
+          "bounce_classique": 1.0,
+          "bounce_rafale": 1.0,
+          "bounce_syncope": 1.0
+        },
+        "beta": {
+          "bounce_classique": 2.0,
+          "bounce_rafale": 3.0,
+          "bounce_syncope": 1.0
+        }
+      },
+      "clap_pattern": {
+        "alpha": {
+          "backbeat": 1.0,
+          "four_floor": 1.0
+        },
+        "beta": {
+          "backbeat": 4.0,
+          "four_floor": 1.0
+        }
+      },
+      "hat_pattern": {
+        "alpha": {
+          "doubles": 1.0,
+          "triolets_dbl": 1.0
+        },
+        "beta": {
+          "doubles": 3.0,
+          "triolets_dbl": 2.0
+        }
+      },
+      "chop_density": {
+        "moyenne": 0.55,
+        "ecart_type": 0.18000000000000002,
+        "n": 3
+      },
+      "stutter_prob": {
+        "moyenne": 0.35,
+        "ecart_type": 0.18000000000000002,
+        "n": 3
+      },
+      "chop_pitch_shift": {
+        "alpha": {
+          "0": 1.0,
+          "3": 1.0,
+          "5": 1.0,
+          "7": 1.0
+        },
+        "beta": {
+          "0": 1.0,
+          "3": 2.0,
+          "5": 3.0,
+          "7": 1.0
+        }
+      },
+      "pitch_mode": {
+        "alpha": {
+          "preserve": 1.0,
+          "follow": 1.0
+        },
+        "beta": {
+          "preserve": 4.0,
+          "follow": 1.0
+        }
+      },
+      "swing": {
+        "moyenne": 0.05,
+        "ecart_type": 0.08000000000000002,
+        "n": 3
+      },
+      "humanize_ms": {
+        "moyenne": 3.0,
+        "ecart_type": 1.6,
+        "n": 3
+      },
+      "bass_mode": {
+        "alpha": {
+          "808_kick": 1.0,
+          "808_temps": 1.0,
+          "origine": 1.0,
+          "aucune": 1.0
+        },
+        "beta": {
+          "808_kick": 3.0,
+          "808_temps": 1.0,
+          "origine": 2.0,
+          "aucune": 1.0
+        }
+      },
+      "sidechain_depth": {
+        "moyenne": 0.6,
+        "ecart_type": 0.19,
+        "n": 3
+      },
+      "kick_decay": {
+        "moyenne": 0.22,
+        "ecart_type": 0.10400000000000001,
+        "n": 3
+      },
+      "fx_density": {
+        "moyenne": 0.4,
+        "ecart_type": 0.2,
+        "n": 3
+      },
+      "squeak_amount": {
+        "moyenne": 0.5,
+        "ecart_type": 0.2,
+        "n": 3
+      },
+      "keep_original_instru": {
+        "moyenne": 0.45,
+        "ecart_type": 0.2,
+        "n": 3
+      },
+      "arrangement_template": {
+        "alpha": {
+          "court": 1.0,
+          "court_intense": 1.0
+        },
+        "beta": {
+          "court": 4.0,
+          "court_intense": 1.0
+        }
+      },
+      "lufs_target": {
+        "moyenne": -8.0,
+        "ecart_type": 1.2000000000000002,
+        "n": 3
+      }
+    }
+  },
+  "maj": "2026-11-28T11:16:51"
+}

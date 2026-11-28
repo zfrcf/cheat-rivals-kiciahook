@@ -203,6 +203,7 @@ def update_preferences(sessions: dict, notes: dict, comparaisons: list, profil: 
                     floor = max(float(cfg.get("std_min_frac", 0.04)) * rng_, 0.7 * std0 if nret + 1 < min_n else 0)
                     e["ecart_type"] = float(max(np.sqrt(var), floor))
                     e["n"] = e.get("n", 0) + 1
+                    e["poids"] = float(e.get("poids", 0.0) + a)  # signal positif cumulé
                     if prof == profil and abs(e["moyenne"] - m0) > 0.02 * rng_:
                         journal.append(f"{k} : {m0:.3g} → {e['moyenne']:.3g} (note {note} de {lettre})")
                 else:
