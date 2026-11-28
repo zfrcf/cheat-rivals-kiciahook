@@ -221,25 +221,32 @@ def segment_bars(chroma_bars, mfcc_bars, n_bars: int) -> list[dict]:
     return segs
 
 
-def choose_hook(segs, vocal_rms_bars: np.ndarray, n_bars: int, hook_len: int = 8) -> dict:
-    """Le hook = la section la plus répétée ET la plus riche en voix."""
+def choose_hook(segs, vocal_rms_bars: np.ndarray, n_bars: int, hook_len: int = 8, chroma_bars=None) -> dict:
+    """Le hook = la fenêtre de `hook_len` mesures la plus riche en voix ET la plus répétée.
+
+    Répétition : similarité cosinus moyenne (mesure à mesure) du chroma de la fenêtre avec
+    la meilleure autre fenêtre qui ne la chevauche pas. Bonus aux débuts de phrase (×4).
+    """
+    L = min(hook_len, n_bars)
     v = vocal_rms_bars / (vocal_rms_bars.mean() + 1e-9)
+    F = None
+    if chroma_bars is not None:
+        F = chroma_bars / (np.linalg.norm(chroma_bars, axis=1, keepdims=True) + 1e-9)
     best = None
-    by_label: dict = {}
-    for s in segs:
-        by_label.setdefault(s["label"], []).append(s)
-    for lab, occ in by_label.items():
-        voc = np.mean([v[o["debut"]:o["fin"]].mean() for o in occ])
-        score = len(occ) * voc * min(1.0, np.mean([o["fin"] - o["debut"] for o in occ]) / 4)
+    for s0 in range(0, n_bars - L + 1, 2):
+        rep = 0.0
+        if F is not None:
+            for s2 in range(0, n_bars - L + 1, 2):
+                if abs(s2 - s0) >= L:
+                    rep = max(rep, float(np.mean(np.sum(F[s0:s0 + L] * F[s2:s2 + L], axis=1))))
+        voc = float(v[s0:s0 + L].mean())
+        score = voc * (0.5 + rep) * (1.1 if s0 % 4 == 0 else 1.0)
         if best is None or score > best[0]:
-            best = (score, lab, occ)
-    _, lab, occ = best
-    o = max(occ, key=lambda s: v[s["debut"]:s["fin"]].mean())
-    start = o["debut"]
-    if start + hook_len > n_bars:
-        start = max(0, n_bars - hook_len)
-    return {"label": lab, "debut": int(start), "fin": int(min(n_bars, start + hook_len)),
-            "repetitions": len(occ), "score_voix": round(float(v[o["debut"]:o["fin"]].mean()), 3)}
+            best = (score, s0, rep, voc)
+    _, s0, rep, voc = best
+    lab = next((sg["label"] for sg in segs if sg["debut"] <= s0 < sg["fin"]), "?")
+    return {"label": lab, "debut": int(s0), "fin": int(s0 + L), "repetition": round(rep, 3),
+            "score_voix": round(voc, 3)}
 
 
 def classify_profile(feat: dict) -> tuple[str, dict]:
@@ -289,7 +296,7 @@ def analyze_bars(mix_aligned: np.ndarray, harmonic_aligned: np.ndarray, vocals_a
     key = estimate_key(Ch.mean(axis=0))
     chords = chords_per_bar(Ch, R, key, Bc)
     segs = segment_bars(Ch, Mm, n_bars)
-    hook = choose_hook(segs, Rv, n_bars, hook_len)
+    hook = choose_hook(segs, Rv, n_bars, hook_len, Ch)
     return {"n_mesures": n_bars, "tonalite": key, "accords": chords, "segments": segs, "hook": hook,
             "rms_voix_mesures": Rv.round(5).tolist(), "rms_mesures": Rm.round(5).tolist()}
 
