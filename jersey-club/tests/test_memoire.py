@@ -91,3 +91,10 @@ def test_status_lisible(memoire_isolee, tmp_path):
     learn.learn(tmp_path / "rendu", {"A": 5}, commentaire="plus de squeak")
     txt = status.render(status.collect())
     assert "Règles actives (1)" in txt and "squeak_amount" in txt and "Profil « pop »" in txt
+
+
+def test_lexique_tolerant():
+    from learn import motif_match, norm_txt
+    assert motif_match("kick trop sec", norm_txt("Le kick est trop sec"))
+    assert motif_match("voix pitchee", norm_txt("j'aime la voix pitchée"))
+    assert not motif_match("kick trop sec", norm_txt("kick vraiment pas du tout trop sec"))

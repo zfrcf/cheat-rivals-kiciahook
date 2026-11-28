@@ -124,6 +124,13 @@ def _write_rule(param, direction, profil, note, cible) -> dict:
     return {"param": param, "direction": direction, "profil": profil, "cible": cible, "archivees": len(moved)}
 
 
+def motif_match(motif: str, txt: str) -> bool:
+    """Mots du motif dans l'ordre, jusqu'à 2 mots intercalés (« kick est trop sec » ⊃ « kick trop sec »)."""
+    words = [re.escape(w) for w in norm_txt(motif).split()]
+    pat = r"\b" + r"(?:\W+\w+){0,2}?\W+".join(words) + r"\b"
+    return re.search(pat, txt) is not None
+
+
 def comment_to_rules(comment: str, profil: str, base_params: dict) -> tuple[list, list]:
     """Convertit un commentaire libre en règles via le lexique ; renvoie (règles, fragments non compris)."""
     lex = jc.load_yaml(jc.CONFIG_DIR / "lexique.yaml") or []
@@ -131,7 +138,7 @@ def comment_to_rules(comment: str, profil: str, base_params: dict) -> tuple[list
     txt = norm_txt(comment)
     rules, used = [], set()
     for ent in lex:
-        if any(norm_txt(m) in txt for m in ent["motifs"]) and ent["param"] not in used:
+        if any(motif_match(m, txt) for m in ent["motifs"]) and ent["param"] not in used:
             s = specs[ent["param"]]
             d = str(ent["direction"])
             cible = ""
@@ -142,8 +149,8 @@ def comment_to_rules(comment: str, profil: str, base_params: dict) -> tuple[list
             rules.append(_write_rule(ent["param"], d, profil, comment, cible))
             used.add(ent["param"])
     fragments = [f.strip() for f in re.split(r"[,;.]| et | mais ", txt) if f.strip()]
-    lex_m = [norm_txt(m) for e in lex for m in e["motifs"]]
-    incompris = [f for f in fragments if not any(m in f for m in lex_m)]
+    lex_m = [m for e in lex for m in e["motifs"]]
+    incompris = [f for f in fragments if not any(motif_match(m, f) for m in lex_m)]
     return rules, incompris
 
 
@@ -176,7 +183,7 @@ def update_preferences(sessions: dict, notes: dict, comparaisons: list, profil: 
     journal = []
     for prof in (profil, "*"):
         nret = prefs["n_retours"].get(prof, 0)
-        for lettre, note in notes.items():
+        for lettre, note in sorted(notes.items(), key=lambda kv: -kv[1]):
             if lettre not in sessions:
                 continue
             w = (float(note) - 1) / 4

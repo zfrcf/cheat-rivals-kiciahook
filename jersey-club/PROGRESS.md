@@ -18,11 +18,22 @@ cd ~/.claude/skills/jersey-club   # = /home/user/cheat-rivals-kiciahook/jersey-c
 
 - [x] Jalon 7 — learn.py (notes → EMA/Beta, comparaisons, commentaires → règles via lexique, snapshots + rollback), reference.py (BPM, patterns par vote + correction de downbeat, densité, bandes, LUFS, LRA, structure), status.py, lessons.md. Tests : 16/16 (dont pipeline complet normal/--fast/complet + rejeu identique, ~4 min).
 
-## En cours
-- Jalon 8 — SKILL.md, README.md, install.sh, démonstration de la boucle rendu → retour → apprentissage → rendu.
+- [x] Jalon 8 — SKILL.md (121 lignes, déclenchement vérifié par `claude -p` : « version jersey club qui rebondit » → Skill jersey-club), README.md, install.sh, démonstration de la boucle d'apprentissage (docs/demo_boucle.md : −28 % de chops, kick_decay 0,22 → 0,35, pattern de la variante préférée adopté).
 
-## Reste à faire
-- Jalon 8.
+## Definition of Done
+- [x] tous les tests passent (17/17, ~4 min)
+- [x] rendu de bout en bout sur la chanson synthétique (aucun fichier utilisateur fourni à ce jour)
+- [x] skill installé dans ~/.claude/skills/jersey-club (lien symbolique vers le dépôt) et déclenché par une phrase naturelle
+- [x] boucle rendu → retour → apprentissage → rendu démontrée avec différence mesurable
+- [x] README.md, PROGRESS.md, DECISIONS.md à jour, tout commité et poussé
+
+## Reste à faire (pistes)
+1. Premier essai sur un VRAI morceau de l'utilisateur + 2-3 références Jersey club réelles (calibre profils, patterns, LUFS).
+2. Gestion de la négation dans le lexique et validation des règles créées par Claude.
+3. Détection de downbeat apprise (ou guidée par l'utilisateur via --downbeat) ; pénalité de hook en mesure 0.
+
+## Note mémoire
+La mémoire livrée (memory/) est VIERGE : la démo a utilisé une mémoire isolée. Les premiers retours réels de l'utilisateur seront donc les seuls signaux appris.
 
 ## Fragile (autocritique)
 - Références : le downbeat d'un morceau sans harmonie est ambigu ; corrigé par une rotation heuristique (pattern connu, sinon « kick sur le 1 + rafale en fin de mesure »). Un vrai pattern inédit peut être enregistré décalé d'un temps.

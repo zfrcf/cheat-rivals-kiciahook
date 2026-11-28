@@ -22,3 +22,6 @@ Format : décision — raison — alternative écartée.
 18. Les règles issues d'un commentaire sont liées au profil de la source commentée (conformément à §5.2) ; les règles manuelles (--regle) valent pour tous les profils par défaut — une remarque de goût général s'applique partout — tout lier au profil.
 19. Patterns de référence extraits par vote par tick (≥ 50 % des mesures) — robuste aux attaques parasites — ensemble exact le plus fréquent (trop fragile).
 20. `JERSEY_MEMORY_DIR` / `JERSEY_CONFIG_DIR` surchargent les dossiers — tests isolés, la mémoire réelle n'est jamais touchée par pytest — monkeypatch des modules.
+21. Démonstration de la boucle sur une mémoire isolée — ne pas biaiser les rendus futurs de l'utilisateur avec un faux retour — démo sur la mémoire réelle.
+22. Lexique : correspondance « mots dans l'ordre, ≤ 2 mots intercalés » — « le kick est trop sec » doit matcher « kick trop sec » — sous-chaîne exacte.
+23. Pas de boucle d'évaluation skill-creator (sous-agents + visionneuse) — le livrable est un outil audio mesuré par pytest et par les métriques ; le déclenchement a été vérifié par `claude -p` — boucle complète avec revue humaine (impossible sans écoute de l'utilisateur).
