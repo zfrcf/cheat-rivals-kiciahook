@@ -21,7 +21,10 @@ def memoire_isolee(tmp_path, monkeypatch):
     src = ROOT / "memory" / "lessons.md"
     if src.exists():
         shutil.copy(src, mem / "lessons.md")
+    cfg = tmp_path / "config"
+    shutil.copytree(ROOT / "config", cfg)
     monkeypatch.setenv("JERSEY_MEMORY_DIR", str(mem))
+    monkeypatch.setenv("JERSEY_CONFIG_DIR", str(cfg))
     import importlib
     import jc_common
     importlib.reload(jc_common)

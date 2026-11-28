@@ -22,7 +22,7 @@ import soundfile as sf
 import yaml
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
-CONFIG_DIR = SKILL_DIR / "config"
+CONFIG_DIR = Path(os.environ.get("JERSEY_CONFIG_DIR", SKILL_DIR / "config"))
 MEMORY_DIR = Path(os.environ.get("JERSEY_MEMORY_DIR", SKILL_DIR / "memory"))
 ASSETS_DIR = SKILL_DIR / "assets"
 CACHE_DIR = Path(os.environ.get("JERSEY_CACHE_DIR", SKILL_DIR / "cache"))

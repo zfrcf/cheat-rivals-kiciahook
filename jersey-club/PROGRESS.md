@@ -16,13 +16,17 @@ cd ~/.claude/skills/jersey-club   # = /home/user/cheat-rivals-kiciahook/jersey-c
 - [x] Jalon 5 — params.py (résolution mémoire A/B/C), bass.py (808 kick/temps, origine, aucune), arrange.py (court, court_intense, complet), mix.py (bus, sidechain, limiteur TP, loudness), jerseyfy.py → premier rendu complet (3 variantes, ~105 s en --fast sur 60 s).
 - [x] Jalon 6 — evaluate.py (BPM par autocorrélation, kicks par enveloppe de Hilbert, LUFS, TP, clics, phase, tonalité, bandes, PNG) + boucle d'auto-correction (2 tentatives) consignée dans rapport.md et session.json.
 
+- [x] Jalon 7 — learn.py (notes → EMA/Beta, comparaisons, commentaires → règles via lexique, snapshots + rollback), reference.py (BPM, patterns par vote + correction de downbeat, densité, bandes, LUFS, LRA, structure), status.py, lessons.md. Tests : 16/16 (dont pipeline complet normal/--fast/complet + rejeu identique, ~4 min).
+
 ## En cours
-- Jalon 7 — mémoire : learn.py, reference.py, status.py, lessons.md + tests.
+- Jalon 8 — SKILL.md, README.md, install.sh, démonstration de la boucle rendu → retour → apprentissage → rendu.
 
 ## Reste à faire
-- Jalon 7, puis jalon 8 (SKILL.md, README.md, install.sh, démonstration de la boucle d'apprentissage).
+- Jalon 8.
 
 ## Fragile (autocritique)
+- Références : le downbeat d'un morceau sans harmonie est ambigu ; corrigé par une rotation heuristique (pattern connu, sinon « kick sur le 1 + rafale en fin de mesure »). Un vrai pattern inédit peut être enregistré décalé d'un temps.
+- Lexique commentaires → règles : simple recherche de sous-chaînes ; une négation (« pas trop sec ») déclenche quand même « trop sec ». Claude doit relire les règles créées (learn.py les affiche) et corriger avec --regle.
 - Mesure du timing des kicks sur le master : la 808 déclenchée au même instant brouille le détecteur (≈ 7 ms sur master contre 3 ms sur le stem batterie). Le placement réel est exact à l'échantillon ; c'est la MESURE qui est bruitée et pourrait déclencher une fausse « correction ».
 - Mode --fast : la « voix » HPSS contient nappes et synthés ⇒ tonalité peu fiable (D mineur au lieu de La mineur sur la chanson synthétique, confiance 0,23) et chops moins propres.
 - Hook en mesure 0 possible (pas de pénalité de début de morceau).

@@ -18,3 +18,7 @@ Format : décision — raison — alternative écartée.
 14. Les références recentrent les défauts à la résolution (poids n/(n+2)) au lieu de réécrire style_profile.yaml — réversible, traçable, aucune perte des hypothèses de départ — réécriture du YAML.
 15. keep_original_instru est un niveau continu 0-1 (0 = coupé) plutôt qu'un booléen — apprenable finement — booléen.
 16. Pré-roll de 0,5 s de silence avant rubberband — supprime le trou d'attaque en début de fichier — accepter le trou.
+17. Snapshots = preferences.json ET lessons.md ensemble — un rollback doit restaurer l'état complet de la mémoire — snapshot de preferences.json seul.
+18. Les règles issues d'un commentaire sont liées au profil de la source commentée (conformément à §5.2) ; les règles manuelles (--regle) valent pour tous les profils par défaut — une remarque de goût général s'applique partout — tout lier au profil.
+19. Patterns de référence extraits par vote par tick (≥ 50 % des mesures) — robuste aux attaques parasites — ensemble exact le plus fréquent (trop fragile).
+20. `JERSEY_MEMORY_DIR` / `JERSEY_CONFIG_DIR` surchargent les dossiers — tests isolés, la mémoire réelle n'est jamais touchée par pytest — monkeypatch des modules.

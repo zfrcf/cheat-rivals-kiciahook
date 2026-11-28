@@ -309,7 +309,7 @@ def replay(session_path: Path, sortie: str | None) -> Path:
     same = h == s["resultat"]["empreinte_audio"]
     log(f"Rendu rejoué : {'IDENTIQUE' if same else 'DIFFÉRENT'} (empreinte {h[:12]})")
     print(out_dir / s["resultat"]["wav"])
-    return out_dir
+    return out_dir, same
 
 
 def main():
